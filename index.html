@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>TapBox — Bounding Box Annotator</title>
+<style>
+  :root{
+    --bg:#14171a;
+    --panel:#1c2024;
+    --panel-2:#22262b;
+    --line:#2d3238;
+    --text:#e8ebee;
+    --text-dim:#8b939c;
+    --accent:#5ee3c1;      /* unselected box / primary actions */
+    --accent-dim:#2f6a5c;
+    --select:#ffcf5c;      /* selected box highlight */
+    --select-dim:#8a6a1f;
+    --danger:#ff6b6b;
+    --warn:#ffb84d;
+    --mono: "SF Mono","Consolas","Roboto Mono",monospace;
+    --sans: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{
+    margin:0; padding:0; height:100%; background:var(--bg); color:var(--text);
+    font-family:var(--sans); overflow:hidden; overscroll-behavior:none;
+  }
+  #app{
+    display:flex; flex-direction:column; height:100%; height:100dvh;
+  }
+
+  /* ---------- Header ---------- */
+  #header{
+    flex:0 0 auto;
+    background:var(--panel);
+    border-bottom:1px solid var(--line);
+    padding:10px 12px calc(10px + env(safe-area-inset-top)) 12px;
+    padding-top: max(10px, env(safe-area-inset-top));
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+  }
+  #headerLeft{display:flex; flex-direction:column; gap:2px; min-width:0;}
+  #counter{font-family:var(--mono); font-size:15px; font-weight:600; letter-spacing:.02em;}
+  #statusLine{font-size:12px; color:var(--text-dim); display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+  #statusBadge{
+    font-size:11px; padding:2px 7px; border-radius:20px; font-weight:600;
+    border:1px solid var(--line);
+  }
+  #statusBadge.annotated{color:var(--accent); border-color:var(--accent-dim); background:rgba(94,227,193,.08);}
+  #statusBadge.negative{color:var(--warn); border-color:#5a4726; background:rgba(255,184,77,.08);}
+  #statusBadge.empty{color:var(--text-dim);}
+  #objectsCounter{font-family:var(--mono); font-size:11px; color:var(--text-dim);}
+  #objectsCounter b{color:var(--text);}
+  #selectedTag{
+    font-size:11px; padding:2px 7px; border-radius:20px; font-weight:600;
+    border:1px solid var(--select-dim); color:var(--select); background:rgba(255,207,92,.1);
+    display:none;
+  }
+  #selectedTag.show{display:inline-block;}
+  #progressWrap{display:flex; flex-direction:column; align-items:flex-end; gap:3px; font-family:var(--mono); font-size:11px; color:var(--text-dim);}
+  #progressBar{width:74px; height:4px; background:var(--line); border-radius:2px; overflow:hidden;}
+  #progressBar>div{height:100%; background:var(--accent); width:0%;}
+
+  /* ---------- Viewer ---------- */
+  #viewerWrap{
+    flex:1 1 auto; position:relative; min-height:0;
+    background:
+      linear-gradient(45deg, #191c1f 25%, transparent 25%),
+      linear-gradient(-45deg, #191c1f 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #191c1f 75%),
+      linear-gradient(-45deg, transparent 75%, #191c1f 75%);
+    background-size:20px 20px;
+    background-position:0 0, 0 10px, 10px -10px, -10px 0px;
+    background-color:#101214;
+    touch-action:none;
+  }
+  #canvas{
+    position:absolute; top:0; left:0; width:100%; height:100%;
+    display:block; touch-action:none;
+  }
+  #emptyState{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    flex-direction:column; gap:14px; color:var(--text-dim); text-align:center; padding:30px;
+  }
+  #emptyState.hidden{display:none;}
+  #emptyState svg{opacity:.35;}
+  #emptyState button{margin-top:6px;}
+  #toast{
+    position:absolute; left:50%; bottom:14px; transform:translateX(-50%) translateY(20px);
+    background:#000; color:var(--text); font-size:13px; padding:9px 16px; border-radius:8px;
+    opacity:0; transition:opacity .18s, transform .18s; pointer-events:none; white-space:nowrap;
+    border:1px solid var(--line);
+  }
+  #toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  /* ---------- Controls ---------- */
+  #controls{
+    flex:0 0 auto; background:var(--panel);
+    border-top:1px solid var(--line);
+    padding:8px 8px calc(8px + env(safe-area-inset-bottom)) 8px;
+    padding-bottom:max(8px, env(safe-area-inset-bottom));
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .row{display:flex; gap:8px;}
+  .row > *{flex:1;}
+  button{
+    font-family:var(--sans); font-size:14px; font-weight:600;
+    border:1px solid var(--line); background:var(--panel-2); color:var(--text);
+    border-radius:10px; padding:13px 8px; min-height:48px;
+    display:flex; align-items:center; justify-content:center; gap:6px;
+    cursor:pointer; user-select:none; transition:background .1s, transform .05s;
+  }
+  button:active{transform:scale(0.96); background:var(--line);}
+  button:disabled{opacity:.35; pointer-events:none;}
+  button.primary{background:var(--accent); border-color:var(--accent); color:#0a1512;}
+  button.primary:active{background:#4ec9aa;}
+  button.danger{color:var(--danger); border-color:#5a2a2a;}
+  button.warn-toggle{color:var(--warn); border-color:#5a4726;}
+  button.warn-toggle.active{background:var(--warn); color:#2b1c00; border-color:var(--warn);}
+  button.icon-only{flex:0 0 48px; padding:13px 0;}
+  #importInput{display:none;}
+  #classPill{
+    font-family:var(--mono); font-size:11px; color:var(--text-dim);
+    text-align:center; padding-top:1px;
+  }
+  #classPill b{color:var(--text);}
+
+  svg.i{width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Header -->
+  <div id="header">
+    <div id="headerLeft">
+      <div id="counter">0 / 0</div>
+      <div id="statusLine">
+        <span id="statusBadge" class="empty">No image</span>
+        <span id="objectsCounter">Objects: <b>0</b></span>
+        <span id="selectedTag">Box 1 selected</span>
+      </div>
+    </div>
+    <div id="progressWrap">
+      <div>Annotated <span id="annotatedCount">0</span> / <span id="totalCount">0</span></div>
+      <div id="progressBar"><div id="progressBarFill"></div></div>
+    </div>
+  </div>
+
+  <!-- Viewer -->
+  <div id="viewerWrap">
+    <canvas id="canvas"></canvas>
+    <div id="emptyState">
+      <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>
+      </svg>
+      <div>No images loaded yet.<br>Import a folder of photos to start labeling.</div>
+      <button class="primary" id="emptyImportBtn" type="button">Import Images</button>
+    </div>
+    <div id="toast"></div>
+  </div>
+
+  <!-- Controls -->
+  <div id="controls">
+    <div class="row">
+      <button id="prevBtn" type="button">
+        <svg class="i" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>Prev
+      </button>
+      <button id="nextBtn" type="button">
+        Next<svg class="i" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+    </div>
+    <div class="row">
+      <button id="saveBtn" class="primary" type="button">
+        <svg class="i" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Save
+      </button>
+      <button id="noObjBtn" class="warn-toggle" type="button">No Object</button>
+    </div>
+    <div class="row">
+      <button id="undoBtn" class="icon-only" type="button" title="Undo">
+        <svg class="i" viewBox="0 0 24 24"><path d="M3 7v6h6"/><path d="M3 13a9 9 0 1 0 3-6.7L3 9"/></svg>
+      </button>
+      <button id="deleteSelectedBtn" class="danger" type="button">
+        <svg class="i" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>Delete Selected
+      </button>
+    </div>
+    <div class="row">
+      <button id="clearAllBtn" class="danger" type="button">
+        <svg class="i" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>Clear All
+      </button>
+      <button id="importBtn" type="button">
+        <svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8M8 12h8"/></svg>Import
+      </button>
+      <input type="file" id="importInput" accept="image/jpeg,image/png,image/webp" multiple>
+    </div>
+    <div class="row">
+      <button id="exportBtn" class="primary" type="button">
+        <svg class="i" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+        Export Dataset (.zip)
+      </button>
+    </div>
+    <div id="classPill">class 0: <b>object</b> &nbsp;•&nbsp; single-class detector, multi-box per image</div>
+  </div>
+
+</div>
+
+<!-- JSZip — used only for building the export .zip client-side -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* =========================================================================
+   STATE
+   Each image record now holds an ARRAY of boxes instead of a single box.
+
+   {
+     id: string (unique, = original file name, de-duplicated if needed),
+     file: File,                 // original file, bytes untouched, used for export
+     url: string,                 // objectURL for <img> display
+     img: HTMLImageElement|null,  // lazily loaded
+     naturalWidth, naturalHeight: number|null,
+     boxes: [                     // ORIGINAL IMAGE PIXEL coordinates, one entry per object
+       { x, y, w, h, classId }, ...
+     ],
+     negative: boolean,           // "No object" flag (mutually exclusive with boxes)
+     annotated: boolean           // has been explicitly saved (>=1 box, or negative)
+   }
+
+   Selection (state.selectedIndex) is an index into the CURRENT image's
+   boxes array, or -1 if nothing is selected. It resets whenever you
+   navigate to a different image, same as the undo stack.
+   ========================================================================= */
+
+const state = {
+  images: [],         // array of records, in load order
+  current: -1,         // index into images
+  selectedIndex: -1,    // index into images[current].boxes, or -1
+  undoStack: [],        // stack of {boxes, negative} snapshots for the CURRENT image only
+  drag: null            // active pointer interaction descriptor, or null
+};
+
+const CLASS_ID = 0;
+const CLASS_NAME = "object";
+const HANDLE_HIT_RADIUS = 26;   // CSS px, touch-friendly hit test radius for corner handles
+const HANDLE_DRAW_RADIUS = 9;   // CSS px, visual radius of corner handle dot
+const MIN_BOX_PX = 4;           // minimum box size in original image pixels
+
+/* ---------------------------------------------------------------------
+   DOM references
+   --------------------------------------------------------------------- */
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const viewerWrap = document.getElementById("viewerWrap");
+const emptyState = document.getElementById("emptyState");
+const toastEl = document.getElementById("toast");
+
+const counterEl = document.getElementById("counter");
+const statusBadge = document.getElementById("statusBadge");
+const objectsCounterEl = document.getElementById("objectsCounter");
+const selectedTagEl = document.getElementById("selectedTag");
+const annotatedCountEl = document.getElementById("annotatedCount");
+const totalCountEl = document.getElementById("totalCount");
+const progressBarFill = document.getElementById("progressBarFill");
+
+const prevBtn = document.getElementById("prevBtn");
+const nextBtn = document.getElementById("nextBtn");
+const saveBtn = document.getElementById("saveBtn");
+const noObjBtn = document.getElementById("noObjBtn");
+const undoBtn = document.getElementById("undoBtn");
+const deleteSelectedBtn = document.getElementById("deleteSelectedBtn");
+const clearAllBtn = document.getElementById("clearAllBtn");
+const importBtn = document.getElementById("importBtn");
+const emptyImportBtn = document.getElementById("emptyImportBtn");
+const importInput = document.getElementById("importInput");
+const exportBtn = document.getElementById("exportBtn");
+
+/* ---------------------------------------------------------------------
+   Small UI helpers
+   --------------------------------------------------------------------- */
+let toastTimer = null;
+function toast(msg, ms){
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>toastEl.classList.remove("show"), ms || 1600);
+}
+
+function currentRecord(){
+  return state.current >= 0 ? state.images[state.current] : null;
+}
+
+/* =========================================================================
+   1. IMAGE IMPORT
+   ========================================================================= */
+function loadImages(fileList){
+  const files = Array.from(fileList).filter(f => /^image\/(jpeg|png|webp)$/.test(f.type));
+  if(files.length === 0){
+    toast("No supported image files selected");
+    return;
+  }
+
+  const wasEmpty = state.images.length === 0;
+  const existingIds = new Set(state.images.map(r => r.id));
+
+  files.forEach(file => {
+    let id = file.name;
+    // de-duplicate names so each image has a unique key for the annotation map
+    let n = 1;
+    while(existingIds.has(id)){
+      const dot = file.name.lastIndexOf(".");
+      const base = dot === -1 ? file.name : file.name.slice(0, dot);
+      const ext = dot === -1 ? "" : file.name.slice(dot);
+      id = base + "__" + n + ext;
+      n++;
+    }
+    existingIds.add(id);
+
+    state.images.push({
+      id: id,
+      file: file,
+      url: URL.createObjectURL(file),
+      img: null,
+      naturalWidth: null,
+      naturalHeight: null,
+      boxes: [],       // <-- multi-box array (was a single `box` object before)
+      negative: false,
+      annotated: false
+    });
+  });
+
+  updateProgressUI();
+  toast(files.length + " image" + (files.length === 1 ? "" : "s") + " imported");
+
+  if(wasEmpty){
+    state.current = 0;
+    showImage(0);
+  } else {
+    // Just refresh counters/nav state, stay on current image.
+    refreshNavUI();
+  }
+}
+
+/* =========================================================================
+   2. SHOW IMAGE  (loads + draws the image at `index`, restores its boxes)
+   ========================================================================= */
+function showImage(index){
+  if(index < 0 || index >= state.images.length) return;
+
+  state.current = index;
+  state.undoStack = [];    // undo history is per-image
+  state.selectedIndex = -1; // selection is per-image too
+  const rec = state.images[index];
+
+  emptyState.classList.add("hidden");
+
+  const drawWhenReady = () => {
+    resizeCanvasToViewer();
+    render();
+    refreshNavUI();
+  };
+
+  if(rec.img){
+    drawWhenReady();
+    return;
+  }
+
+  const image = new Image();
+  image.onload = function(){
+    rec.img = image;
+    rec.naturalWidth = image.naturalWidth;
+    rec.naturalHeight = image.naturalHeight;
+    // Only redraw if we're still looking at this image (user may have navigated fast)
+    if(state.current === index) drawWhenReady();
+  };
+  image.onerror = function(){
+    toast("Failed to load: " + rec.id);
+  };
+  image.src = rec.url;
+}
+
+function nextImage(){
+  if(state.images.length === 0) return;
+  if(state.current < state.images.length - 1) showImage(state.current + 1);
+  else toast("Last image");
+}
+
+function previousImage(){
+  if(state.images.length === 0) return;
+  if(state.current > 0) showImage(state.current - 1);
+  else toast("First image");
+}
+
+/* =========================================================================
+   COORDINATE SYSTEM
+   ------------------------------------------------------------------------
+   There are three coordinate spaces in play:
+
+   1. ORIGINAL IMAGE pixels   — image.naturalWidth x naturalHeight. This is
+      the ONLY space annotations are stored/exported in.
+   2. CANVAS CSS pixels        — the on-screen canvas element, sized by CSS
+      (getBoundingClientRect()). Pointer events give coordinates in this
+      space (after subtracting the canvas's on-screen offset).
+   3. CANVAS DEVICE pixels     — canvas.width/height, which we set to
+      CSS size * devicePixelRatio for a crisp draw. We call
+      ctx.scale(dpr, dpr) once so all drawing code below can pretend it's
+      working in CSS pixels (space #2) and the browser handles the rest.
+
+   getFitTransform() computes how the image (space 1) is letterboxed into
+   the canvas (space 2): a uniform `scale` plus (offsetX, offsetY) so the
+   image is centered. All conversions below go through this transform.
+   This is unchanged from the single-box version — multi-box support only
+   changes WHICH box a given point is tested against, not the math itself.
+   ========================================================================= */
+
+function getFitTransform(rec, cssWidth, cssHeight){
+  const iw = rec.naturalWidth, ih = rec.naturalHeight;
+  const scale = Math.min(cssWidth / iw, cssHeight / ih);
+  const drawWidth = iw * scale;
+  const drawHeight = ih * scale;
+  const offsetX = (cssWidth - drawWidth) / 2;
+  const offsetY = (cssHeight - drawHeight) / 2;
+  return { scale, offsetX, offsetY, drawWidth, drawHeight };
+}
+
+// canvas CSS-pixel point -> original image pixel point (clamped to image bounds)
+function canvasToImage(rec, t, cx, cy){
+  const ix = (cx - t.offsetX) / t.scale;
+  const iy = (cy - t.offsetY) / t.scale;
+  return {
+    x: Math.min(Math.max(ix, 0), rec.naturalWidth),
+    y: Math.min(Math.max(iy, 0), rec.naturalHeight)
+  };
+}
+
+// original image pixel point -> canvas CSS-pixel point
+function imageToCanvas(t, ix, iy){
+  return { x: t.offsetX + ix * t.scale, y: t.offsetY + iy * t.scale };
+}
+
+function getPointerPos(evt){
+  const r = canvas.getBoundingClientRect();
+  return { x: evt.clientX - r.left, y: evt.clientY - r.top };
+}
+
+/* =========================================================================
+   CANVAS SIZING / RENDER
+   ========================================================================= */
+function resizeCanvasToViewer(){
+  const dpr = window.devicePixelRatio || 1;
+  const cssW = viewerWrap.clientWidth;
+  const cssH = viewerWrap.clientHeight;
+  canvas.style.width = cssW + "px";
+  canvas.style.height = cssH + "px";
+  canvas.width = Math.round(cssW * dpr);
+  canvas.height = Math.round(cssH * dpr);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.scale(dpr, dpr);
+}
+
+function render(){
+  const cssW = viewerWrap.clientWidth, cssH = viewerWrap.clientHeight;
+  ctx.clearRect(0, 0, cssW, cssH);
+
+  const rec = currentRecord();
+  if(!rec || !rec.img){
+    emptyState.classList.toggle("hidden", state.images.length !== 0);
+    return;
+  }
+
+  const t = getFitTransform(rec, cssW, cssH);
+  ctx.drawImage(rec.img, t.offsetX, t.offsetY, t.drawWidth, t.drawHeight);
+
+  // Dim the image slightly if marked "no object" so it reads as inactive
+  if(rec.negative){
+    ctx.fillStyle = "rgba(10,10,10,0.45)";
+    ctx.fillRect(t.offsetX, t.offsetY, t.drawWidth, t.drawHeight);
+    return; // no boxes to draw on a negative image
+  }
+
+  // Draw every box. Unselected boxes render first (thinner, teal); the
+  // selected box is drawn last (on top) with the highlight color and
+  // its resize handles, so it's always the most visually prominent.
+  rec.boxes.forEach((box, i) => {
+    if(i !== state.selectedIndex) drawBox(t, box, i, false);
+  });
+  if(state.selectedIndex >= 0 && rec.boxes[state.selectedIndex]){
+    drawBox(t, rec.boxes[state.selectedIndex], state.selectedIndex, true);
+  }
+}
+
+function drawBox(t, box, index, selected){
+  const p1 = imageToCanvas(t, box.x, box.y);
+  const p2 = imageToCanvas(t, box.x + box.w, box.y + box.h);
+  const w = p2.x - p1.x, h = p2.y - p1.y;
+  const color = selected ? "#ffcf5c" : "#5ee3c1";
+  const darkText = "#1a1400";
+
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = selected ? 3 : 2;
+  ctx.shadowColor = "rgba(0,0,0,0.6)";
+  ctx.shadowBlur = selected ? 5 : 2;
+  ctx.strokeRect(p1.x, p1.y, w, h);
+
+  ctx.fillStyle = selected ? "rgba(255,207,92,0.16)" : "rgba(94,227,193,0.10)";
+  ctx.fillRect(p1.x, p1.y, w, h);
+
+  // numbered label chip, e.g. "1", "2" ...
+  ctx.shadowBlur = 0;
+  ctx.font = "700 12px monospace";
+  const label = String(index + 1);
+  const labelW = ctx.measureText(label).width + 14;
+  const labelY = Math.max(0, p1.y - 20);
+  ctx.fillStyle = color;
+  ctx.fillRect(p1.x, labelY, labelW, 20);
+  ctx.fillStyle = selected ? darkText : "#0a1512";
+  ctx.fillText(label, p1.x + 7, labelY + 14.5);
+
+  // corner handles — only drawn on the selected box, since only the
+  // selected box can be resized (unselected boxes are tap-to-select only)
+  if(selected){
+    const corners = [[p1.x,p1.y],[p2.x,p1.y],[p1.x,p2.y],[p2.x,p2.y]];
+    ctx.shadowBlur = 3;
+    ctx.shadowColor = "rgba(0,0,0,0.7)";
+    corners.forEach(([cx,cy])=>{
+      ctx.beginPath();
+      ctx.arc(cx, cy, HANDLE_DRAW_RADIUS, 0, Math.PI*2);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = darkText;
+      ctx.stroke();
+    });
+  }
+  ctx.restore();
+}
+
+/* =========================================================================
+   3/4. BOUNDING BOX CREATE / SELECT / MOVE / RESIZE (pointer-driven)
+   ------------------------------------------------------------------------
+   Interaction model (this is the core of the multi-box change):
+
+     pointerdown on a corner handle of the ALREADY-SELECTED box  -> resize
+     pointerdown inside the ALREADY-SELECTED box                 -> move
+     pointerdown inside a DIFFERENT (unselected) box              -> select
+                                                                       it only (no move on this gesture)
+     pointerdown on empty canvas                                  -> start
+                                                                       drawing a brand-new box (appended
+                                                                       to the array, existing boxes kept)
+
+   This guarantees a box only ever moves when it was "intentionally
+   selected" first (a prior tap), never as a side effect of starting a
+   new box or of a stray touch on top of it.
+   ========================================================================= */
+
+function pushUndo(){
+  const rec = currentRecord();
+  if(!rec) return;
+  state.undoStack.push({
+    boxes: rec.boxes.map(b => ({...b})),
+    negative: rec.negative
+  });
+  if(state.undoStack.length > 30) state.undoStack.shift();
+}
+
+function hitTestCorner(t, box, cx, cy){
+  const p1 = imageToCanvas(t, box.x, box.y);
+  const p2 = imageToCanvas(t, box.x + box.w, box.y + box.h);
+  const corners = {
+    tl:[p1.x,p1.y], tr:[p2.x,p1.y], bl:[p1.x,p2.y], br:[p2.x,p2.y]
+  };
+  for(const key in corners){
+    const [hx,hy] = corners[key];
+    if(Math.hypot(cx-hx, cy-hy) <= HANDLE_HIT_RADIUS) return key;
+  }
+  return null;
+}
+
+function hitTestInside(t, box, cx, cy){
+  const p1 = imageToCanvas(t, box.x, box.y);
+  const p2 = imageToCanvas(t, box.x + box.w, box.y + box.h);
+  return cx >= p1.x && cx <= p2.x && cy >= p1.y && cy <= p2.y;
+}
+
+// Finds the topmost (last-drawn / highest index) box under a point, or -1.
+function hitTestAnyBox(rec, t, cx, cy){
+  for(let i = rec.boxes.length - 1; i >= 0; i--){
+    if(hitTestInside(t, rec.boxes[i], cx, cy)) return i;
+  }
+  return -1;
+}
+
+canvas.addEventListener("pointerdown", onPointerDown);
+canvas.addEventListener("pointermove", onPointerMove);
+canvas.addEventListener("pointerup", onPointerUp);
+canvas.addEventListener("pointercancel", onPointerUp);
+
+function onPointerDown(evt){
+  const rec = currentRecord();
+  if(!rec || !rec.img || rec.negative) return;
+  evt.preventDefault();
+  canvas.setPointerCapture(evt.pointerId);
+
+  const cssW = viewerWrap.clientWidth, cssH = viewerWrap.clientHeight;
+  const t = getFitTransform(rec, cssW, cssH);
+  const p = getPointerPos(evt);
+
+  // 1. Resize/move only apply to the box that's ALREADY selected.
+  if(state.selectedIndex >= 0 && rec.boxes[state.selectedIndex]){
+    const selBox = rec.boxes[state.selectedIndex];
+
+    const corner = hitTestCorner(t, selBox, p.x, p.y);
+    if(corner){
+      pushUndo();
+      state.drag = { mode:"resize", corner, t, index: state.selectedIndex };
+      return;
+    }
+    if(hitTestInside(t, selBox, p.x, p.y)){
+      pushUndo();
+      const start = canvasToImage(rec, t, p.x, p.y);
+      state.drag = { mode:"move", t, startX:start.x, startY:start.y, orig:{...selBox}, index: state.selectedIndex };
+      return;
+    }
+  }
+
+  // 2. Landing inside a DIFFERENT box just selects it — no move on this gesture.
+  const hitIdx = hitTestAnyBox(rec, t, p.x, p.y);
+  if(hitIdx !== -1){
+    state.selectedIndex = hitIdx;
+    state.drag = null;
+    render();
+    refreshNavUI();
+    toast("Box " + (hitIdx + 1) + " selected");
+    return;
+  }
+
+  // 3. Empty space: start drawing a brand-new box. Existing boxes are untouched.
+  pushUndo();
+  const start = canvasToImage(rec, t, p.x, p.y);
+  const newBox = { x:start.x, y:start.y, w:0, h:0, classId: CLASS_ID };
+  rec.boxes.push(newBox);
+  const newIndex = rec.boxes.length - 1;
+  state.selectedIndex = newIndex;
+  state.drag = { mode:"create", t, anchorX:start.x, anchorY:start.y, index:newIndex };
+}
+
+function onPointerMove(evt){
+  if(!state.drag) return;
+  evt.preventDefault();
+  const rec = currentRecord();
+  if(!rec) return;
+  const t = state.drag.t;
+  const p = getPointerPos(evt);
+  const pt = canvasToImage(rec, t, p.x, p.y);
+  const box = rec.boxes[state.drag.index];
+  if(!box) return;
+
+  if(state.drag.mode === "create"){
+    const x1 = Math.min(state.drag.anchorX, pt.x);
+    const y1 = Math.min(state.drag.anchorY, pt.y);
+    const x2 = Math.max(state.drag.anchorX, pt.x);
+    const y2 = Math.max(state.drag.anchorY, pt.y);
+    rec.boxes[state.drag.index] = { x:x1, y:y1, w:x2-x1, h:y2-y1, classId: box.classId };
+  }
+  else if(state.drag.mode === "move"){
+    const dx = pt.x - state.drag.startX;
+    const dy = pt.y - state.drag.startY;
+    let nx = state.drag.orig.x + dx;
+    let ny = state.drag.orig.y + dy;
+    nx = Math.min(Math.max(nx, 0), rec.naturalWidth - state.drag.orig.w);
+    ny = Math.min(Math.max(ny, 0), rec.naturalHeight - state.drag.orig.h);
+    rec.boxes[state.drag.index] = { x:nx, y:ny, w:state.drag.orig.w, h:state.drag.orig.h, classId: box.classId };
+  }
+  else if(state.drag.mode === "resize"){
+    updateBoundingBox(rec, state.drag.index, state.drag.corner, pt);
+  }
+
+  render();
+}
+
+function onPointerUp(evt){
+  if(!state.drag) return;
+  const rec = currentRecord();
+  const dragIndex = state.drag.index;
+  const wasCreate = state.drag.mode === "create";
+  state.drag = null;
+
+  if(rec && rec.boxes[dragIndex]){
+    const box = rec.boxes[dragIndex];
+    // Discard degenerate boxes (accidental tap with no drag) — only relevant
+    // for a freshly-created box; moved/resized boxes are clamped already.
+    if(wasCreate && (box.w < MIN_BOX_PX || box.h < MIN_BOX_PX)){
+      rec.boxes.splice(dragIndex, 1);
+      state.selectedIndex = -1;
+    } else {
+      rec.annotated = true;
+    }
+  }
+  render();
+  refreshNavUI();
+}
+
+// Resize: recompute the box at `index` from a fixed opposite corner + the dragged corner's new position
+function updateBoundingBox(rec, index, corner, pt){
+  const b = rec.boxes[index];
+  let x1 = b.x, y1 = b.y, x2 = b.x + b.w, y2 = b.y + b.h;
+
+  if(corner === "tl"){ x1 = pt.x; y1 = pt.y; }
+  else if(corner === "tr"){ x2 = pt.x; y1 = pt.y; }
+  else if(corner === "bl"){ x1 = pt.x; y2 = pt.y; }
+  else if(corner === "br"){ x2 = pt.x; y2 = pt.y; }
+
+  const nx1 = Math.min(x1, x2), nx2 = Math.max(x1, x2);
+  const ny1 = Math.min(y1, y2), ny2 = Math.max(y1, y2);
+
+  rec.boxes[index] = { x:nx1, y:ny1, w:nx2-nx1, h:ny2-ny1, classId: b.classId };
+}
+
+/* =========================================================================
+   5. DELETE SELECTED BOX / CLEAR ALL BOXES
+   ========================================================================= */
+function deleteSelectedBox(){
+  const rec = currentRecord();
+  if(!rec) return;
+  if(state.selectedIndex < 0 || !rec.boxes[state.selectedIndex]){
+    toast("No box selected — tap a box first");
+    return;
+  }
+  pushUndo();
+  rec.boxes.splice(state.selectedIndex, 1);
+  state.selectedIndex = -1;
+  rec.annotated = rec.boxes.length > 0 || rec.negative;
+  render();
+  refreshNavUI();
+  toast("Box deleted");
+}
+
+function clearAllBoxes(){
+  const rec = currentRecord();
+  if(!rec || rec.boxes.length === 0){
+    toast("No boxes to clear");
+    return;
+  }
+  pushUndo();
+  rec.boxes = [];
+  state.selectedIndex = -1;
+  rec.annotated = rec.negative; // stays annotated only if still marked negative
+  render();
+  refreshNavUI();
+  toast("All boxes cleared");
+}
+
+function undo(){
+  const rec = currentRecord();
+  if(!rec || state.undoStack.length === 0){ toast("Nothing to undo"); return; }
+  const prev = state.undoStack.pop();
+  rec.boxes = prev.boxes.map(b => ({...b}));
+  rec.negative = prev.negative;
+  rec.annotated = rec.boxes.length > 0 || rec.negative;
+  state.selectedIndex = -1;
+  render();
+  refreshNavUI();
+}
+
+/* =========================================================================
+   6/7. SAVE ANNOTATION / "NO OBJECT" (negative sample)
+   ========================================================================= */
+function saveAnnotation(){
+  const rec = currentRecord();
+  if(!rec) return;
+
+  if(rec.negative){
+    rec.annotated = true;
+    toast("Saved: no object");
+  } else if(rec.boxes.length > 0){
+    const valid = rec.boxes.filter(b => b.w >= MIN_BOX_PX && b.h >= MIN_BOX_PX);
+    if(valid.length === 0){
+      toast("Boxes are too small — adjust before saving");
+      return;
+    }
+    rec.annotated = true;
+    toast("Saved " + rec.boxes.length + " box" + (rec.boxes.length === 1 ? "" : "es"));
+  } else {
+    toast("Draw at least one box, or mark 'No Object'");
+    return;
+  }
+  refreshNavUI();
+}
+
+function loadAnnotation(index){
+  // Restoring annotations is implicit: state.images[index] already holds
+  // its boxes/negative/annotated fields in memory. This function exists as
+  // a named hook (called conceptually from showImage's render path) for
+  // clarity/extension, e.g. if annotations were ever loaded from disk.
+  return state.images[index];
+}
+
+function toggleNoObject(){
+  const rec = currentRecord();
+  if(!rec) return;
+  pushUndo();
+  rec.negative = !rec.negative;
+  if(rec.negative){
+    rec.boxes = [];
+    state.selectedIndex = -1;
+    rec.annotated = true;
+  } else {
+    rec.annotated = rec.boxes.length > 0;
+  }
+  render();
+  refreshNavUI();
+}
+
+/* =========================================================================
+   VALIDATION  (used before export)
+   ========================================================================= */
+function convertToYolo(rec, box){
+  // Converts a single box (original image pixel coords, top-left x/y + w/h)
+  // into one normalized YOLO line: "class_id x_center y_center width height"
+  if(!box) return null;
+  const iw = rec.naturalWidth, ih = rec.naturalHeight;
+
+  let { x, y, w, h } = box;
+
+  // Clamp to image bounds defensively
+  x = Math.min(Math.max(x, 0), iw);
+  y = Math.min(Math.max(y, 0), ih);
+  w = Math.min(Math.max(w, 0), iw - x);
+  h = Math.min(Math.max(h, 0), ih - y);
+
+  if(w <= 0 || h <= 0) return null; // reject zero/negative-size boxes
+
+  const xCenter = (x + w / 2) / iw;
+  const yCenter = (y + h / 2) / ih;
+  const nWidth = w / iw;
+  const nHeight = h / ih;
+
+  const clamp01 = v => Math.min(Math.max(v, 0), 1);
+
+  return [
+    box.classId != null ? box.classId : CLASS_ID,
+    clamp01(xCenter).toFixed(6),
+    clamp01(yCenter).toFixed(6),
+    clamp01(nWidth).toFixed(6),
+    clamp01(nHeight).toFixed(6)
+  ].join(" ");
+}
+
+/* =========================================================================
+   8. EXPORT DATASET (.zip)  — one YOLO line PER BOX, in the order they were drawn
+   ========================================================================= */
+async function exportDataset(){
+  if(state.images.length === 0){
+    toast("Nothing to export yet");
+    return;
+  }
+
+  const unannotated = state.images.filter(r => !r.annotated).length;
+  if(unannotated > 0){
+    const proceed = confirm(
+      unannotated + " image(s) have no saved annotation yet (no boxes and not " +
+      "marked 'No Object'). They will be exported with an EMPTY label file.\n\nContinue export?"
+    );
+    if(!proceed) return;
+  }
+
+  exportBtn.disabled = true;
+  const originalLabel = exportBtn.innerHTML;
+  exportBtn.textContent = "Zipping…";
+
+  try{
+    const zip = new JSZip();
+    const imagesFolder = zip.folder("dataset/images");
+    const labelsFolder = zip.folder("dataset/labels");
+
+    const pad = n => String(n).padStart(5, "0");
+
+    state.images.forEach((rec, i) => {
+      const dot = rec.id.lastIndexOf(".");
+      const ext = dot === -1 ? ".jpg" : rec.id.slice(dot).toLowerCase();
+      const baseName = "img_" + pad(i + 1);
+
+      // Preserve original bytes untouched — just place the File into the zip.
+      imagesFolder.file(baseName + ext, rec.file);
+
+      let lines = [];
+      if(!rec.negative && rec.boxes.length > 0){
+        rec.boxes.forEach(box => {
+          const line = convertToYolo(rec, box);
+          if(line) lines.push(line); // skip degenerate boxes silently
+        });
+      }
+      // Negative samples AND images with zero valid boxes both get an empty file.
+      const content = lines.length > 0 ? (lines.join("\n") + "\n") : "";
+      labelsFolder.file(baseName + ".txt", content);
+    });
+
+    zip.file("dataset/classes.txt", CLASS_NAME + "\n");
+
+    const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions:{level:6} },
+      (meta) => { exportBtn.textContent = "Zipping… " + Math.round(meta.percent) + "%"; });
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "dataset.zip";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+
+    toast("Exported dataset.zip");
+  } catch(err){
+    console.error(err);
+    toast("Export failed — see console");
+  } finally {
+    exportBtn.disabled = false;
+    exportBtn.innerHTML = originalLabel;
+  }
+}
+
+/* =========================================================================
+   NAV / STATUS UI
+   ========================================================================= */
+function refreshNavUI(){
+  const total = state.images.length;
+  const idx = state.current;
+  const rec = currentRecord();
+
+  counterEl.textContent = total === 0 ? "0 / 0" : (idx + 1) + " / " + total;
+
+  statusBadge.className = "";
+  if(!rec){
+    statusBadge.textContent = "No image";
+    statusBadge.classList.add("empty");
+  } else if(rec.negative){
+    statusBadge.textContent = "No object";
+    statusBadge.classList.add("negative");
+  } else if(rec.annotated && rec.boxes.length > 0){
+    statusBadge.textContent = "✓ Annotated";
+    statusBadge.classList.add("annotated");
+  } else {
+    statusBadge.textContent = "○ Not annotated";
+    statusBadge.classList.add("empty");
+  }
+
+  const objCount = rec ? rec.boxes.length : 0;
+  objectsCounterEl.innerHTML = "Objects: <b>" + objCount + "</b>";
+
+  if(rec && state.selectedIndex >= 0 && rec.boxes[state.selectedIndex]){
+    selectedTagEl.textContent = "Box " + (state.selectedIndex + 1) + " selected";
+    selectedTagEl.classList.add("show");
+  } else {
+    selectedTagEl.classList.remove("show");
+  }
+
+  prevBtn.disabled = total === 0 || idx <= 0;
+  nextBtn.disabled = total === 0 || idx >= total - 1;
+  saveBtn.disabled = total === 0;
+  deleteSelectedBtn.disabled = total === 0 || state.selectedIndex < 0;
+  clearAllBtn.disabled = total === 0 || (!rec || rec.boxes.length === 0);
+  undoBtn.disabled = state.undoStack.length === 0;
+  noObjBtn.classList.toggle("active", !!rec?.negative);
+  noObjBtn.disabled = total === 0;
+
+  updateProgressUI();
+}
+
+function updateProgressUI(){
+  const total = state.images.length;
+  const annotated = state.images.filter(r => r.annotated).length;
+  totalCountEl.textContent = total;
+  annotatedCountEl.textContent = annotated;
+  progressBarFill.style.width = total === 0 ? "0%" : Math.round((annotated/total)*100) + "%";
+  emptyState.classList.toggle("hidden", total !== 0);
+}
+
+/* =========================================================================
+   WIRE UP CONTROLS
+   ========================================================================= */
+prevBtn.addEventListener("click", previousImage);
+nextBtn.addEventListener("click", nextImage);
+saveBtn.addEventListener("click", saveAnnotation);
+noObjBtn.addEventListener("click", toggleNoObject);
+undoBtn.addEventListener("click", undo);
+deleteSelectedBtn.addEventListener("click", deleteSelectedBox);
+clearAllBtn.addEventListener("click", clearAllBoxes);
+exportBtn.addEventListener("click", exportDataset);
+
+importBtn.addEventListener("click", () => importInput.click());
+emptyImportBtn.addEventListener("click", () => importInput.click());
+importInput.addEventListener("change", (e) => {
+  if(e.target.files && e.target.files.length){
+    loadImages(e.target.files);
+  }
+  importInput.value = ""; // allow re-selecting the same files later
+});
+
+// Prevent the page itself from scrolling/bouncing while drawing on mobile
+["touchstart","touchmove"].forEach(evtName=>{
+  viewerWrap.addEventListener(evtName, (e)=>{ e.preventDefault(); }, { passive:false });
+});
+
+// Optional desktop keyboard shortcuts (do not affect touch operation)
+window.addEventListener("keydown", (e) => {
+  if(state.images.length === 0) return;
+  switch(e.key){
+    case "ArrowLeft": case "p": case "P": previousImage(); break;
+    case "ArrowRight": case "n": case "N": nextImage(); break;
+    case "s": case "S": saveAnnotation(); break;
+    case "Delete": case "Backspace": deleteSelectedBox(); break;
+  }
+});
+
+window.addEventListener("resize", () => {
+  if(currentRecord()){
+    resizeCanvasToViewer();
+    render();
+  }
+});
+// Orientation changes on Android sometimes fire resize late; nudge again shortly after.
+window.addEventListener("orientationchange", () => {
+  setTimeout(() => { if(currentRecord()){ resizeCanvasToViewer(); render(); } }, 250);
+});
+
+// Initial paint
+resizeCanvasToViewer();
+refreshNavUI();
+
+})();
+</script>
+</body>
+</html>
