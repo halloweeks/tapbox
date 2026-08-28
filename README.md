@@ -39,7 +39,7 @@ TapBox currently supports a single object class (`object`, class ID `0`). Multi-
 
 ## How to use
 
-1. Open `labeler.html` in a browser (see [Running locally](#running-locally)).
+1. Open `index.html` in a browser (see [Running locally](#running-locally)).
 2. Tap **Import** and select one or more images from your device.
 3. Draw a bounding box by dragging your finger over the target object. Draw as many boxes as the image needs.
 4. Tap an existing box to select it, then drag inside it to move it, or drag a corner handle to resize it.
@@ -49,7 +49,7 @@ TapBox currently supports a single object class (`object`, class ID `0`). Multi-
 
 ### On Android
 
-Open `labeler.html` in **Chrome for Android** (directly from storage, or via a hosted URL such as GitHub Pages — see below). The interface is sized for a phone screen and works with touch alone; no mouse or keyboard is required. Rotate the device freely — the canvas re-fits the image on orientation change.
+Open `index.html` in **Chrome for Android** (directly from storage, or via a hosted URL such as GitHub Pages — see below). The interface is sized for a phone screen and works with touch alone; no mouse or keyboard is required. Rotate the device freely — the canvas re-fits the image on orientation change.
 
 ## YOLO format
 
@@ -98,7 +98,7 @@ Images are scaled to fit the viewer on screen — the displayed size depends on 
 
 TapBox is a single HTML file with inline CSS and JavaScript — there's no build step, no `npm install`, and no server required for annotation and export.
 
-- **Simplest**: open `labeler.html` directly in a browser (double-click it, or use "Open with" on a phone).
+- **Simplest**: open `index.html` directly in a browser (double-click it, or use "Open with" on a phone).
 - **Alternative**: serve it from any static file server or GitHub Pages if you prefer a URL over a local file.
 
 **Browser note:** the app needs network access the first time it loads (in that browser/session) to fetch the JSZip library from a CDN, which is required for the **Export** step. Import, drawing, navigation, and undo do not require network access. If your browser has already cached the JSZip script, export may also work without a live connection — but this isn't guaranteed.
