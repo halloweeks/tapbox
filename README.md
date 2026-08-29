@@ -622,7 +622,7 @@ When modifying image-preparation functionality, make sure bounding boxes remain 
 
 ## License
 
-[GPL](./LICENSE)
+[LICENSE](./LICENSE)
 
 ## Disclaimer
 
