@@ -6,110 +6,68 @@
 <title>TapBox — Bounding Box Annotator</title>
 <style>
   :root{
-    --bg:#14171a;
-    --panel:#1c2024;
-    --panel-2:#22262b;
-    --line:#2d3238;
-    --text:#e8ebee;
-    --text-dim:#8b939c;
-    --accent:#5ee3c1;      /* unselected box / primary actions */
-    --accent-dim:#2f6a5c;
-    --select:#ffcf5c;      /* selected box highlight */
-    --select-dim:#8a6a1f;
-    --danger:#ff6b6b;
-    --warn:#ffb84d;
-    --mono: "SF Mono","Consolas","Roboto Mono",monospace;
-    --sans: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    --bg:#14171a; --panel:#1c2024; --panel-2:#22262b; --line:#2d3238;
+    --text:#e8ebee; --text-dim:#8b939c;
+    --accent:#5ee3c1; --accent-dim:#2f6a5c;
+    --select:#ffcf5c; --select-dim:#8a6a1f;
+    --danger:#ff6b6b; --warn:#ffb84d;
+    --mono:"SF Mono","Consolas","Roboto Mono",monospace;
+    --sans:-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
-  html,body{
-    margin:0; padding:0; height:100%; background:var(--bg); color:var(--text);
-    font-family:var(--sans); overflow:hidden; overscroll-behavior:none;
-  }
-  #app{
-    display:flex; flex-direction:column; height:100%; height:100dvh;
-  }
+  html,body{margin:0; padding:0; height:100%; background:var(--bg); color:var(--text); font-family:var(--sans); overflow:hidden; overscroll-behavior:none;}
+  #app{display:flex; flex-direction:column; height:100%; height:100dvh;}
 
   /* ---------- Header ---------- */
-  #header{
-    flex:0 0 auto;
-    background:var(--panel);
-    border-bottom:1px solid var(--line);
-    padding:10px 12px calc(10px + env(safe-area-inset-top)) 12px;
-    padding-top: max(10px, env(safe-area-inset-top));
-    display:flex; align-items:center; justify-content:space-between; gap:10px;
-  }
+  #header{flex:0 0 auto; background:var(--panel); border-bottom:1px solid var(--line);
+    padding:10px 12px calc(10px + env(safe-area-inset-top)) 12px; padding-top:max(10px, env(safe-area-inset-top));
+    display:flex; align-items:center; justify-content:space-between; gap:10px;}
   #headerLeft{display:flex; flex-direction:column; gap:2px; min-width:0;}
-  #counter{font-family:var(--mono); font-size:15px; font-weight:600; letter-spacing:.02em;}
-  #statusLine{font-size:12px; color:var(--text-dim); display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
-  #statusBadge{
-    font-size:11px; padding:2px 7px; border-radius:20px; font-weight:600;
-    border:1px solid var(--line);
-  }
-  #statusBadge.annotated{color:var(--accent); border-color:var(--accent-dim); background:rgba(94,227,193,.08);}
-  #statusBadge.negative{color:var(--warn); border-color:#5a4726; background:rgba(255,184,77,.08);}
-  #statusBadge.empty{color:var(--text-dim);}
-  #objectsCounter{font-family:var(--mono); font-size:11px; color:var(--text-dim);}
-  #objectsCounter b{color:var(--text);}
-  #selectedTag{
-    font-size:11px; padding:2px 7px; border-radius:20px; font-weight:600;
-    border:1px solid var(--select-dim); color:var(--select); background:rgba(255,207,92,.1);
-    display:none;
-  }
-  #selectedTag.show{display:inline-block;}
+  #counter{font-family:var(--mono); font-size:15px; font-weight:600;}
+  #statusLine{font-size:12px; color:var(--text-dim); display:flex; gap:6px; align-items:center; flex-wrap:wrap;}
+  .badge{font-size:11px; padding:2px 7px; border-radius:20px; font-weight:600; border:1px solid var(--line);}
+  .badge.annotated{color:var(--accent); border-color:var(--accent-dim); background:rgba(94,227,193,.08);}
+  .badge.negative{color:var(--warn); border-color:#5a4726; background:rgba(255,184,77,.08);}
+  .badge.empty{color:var(--text-dim);}
+  .badge.select{color:var(--select); border-color:var(--select-dim); background:rgba(255,207,92,.1); display:none;}
+  .badge.select.show{display:inline-block;}
+  .badge.local{color:var(--accent); border-color:var(--accent-dim); display:none;}
+  .badge.local.show{display:inline-block;}
   #progressWrap{display:flex; flex-direction:column; align-items:flex-end; gap:3px; font-family:var(--mono); font-size:11px; color:var(--text-dim);}
-  #progressBar{width:74px; height:4px; background:var(--line); border-radius:2px; overflow:hidden;}
+  #progressBar{width:70px; height:4px; background:var(--line); border-radius:2px; overflow:hidden;}
   #progressBar>div{height:100%; background:var(--accent); width:0%;}
+  #toolsBtn{flex:0 0 auto; width:40px; height:40px; border-radius:10px; border:1px solid var(--line); background:var(--panel-2); color:var(--text); font-size:18px; display:flex; align-items:center; justify-content:center;}
 
   /* ---------- Viewer ---------- */
-  #viewerWrap{
-    flex:1 1 auto; position:relative; min-height:0;
+  #viewerWrap{flex:1 1 auto; position:relative; min-height:0;
     background:
-      linear-gradient(45deg, #191c1f 25%, transparent 25%),
-      linear-gradient(-45deg, #191c1f 25%, transparent 25%),
-      linear-gradient(45deg, transparent 75%, #191c1f 75%),
-      linear-gradient(-45deg, transparent 75%, #191c1f 75%);
-    background-size:20px 20px;
-    background-position:0 0, 0 10px, 10px -10px, -10px 0px;
-    background-color:#101214;
-    touch-action:none;
-  }
-  #canvas{
-    position:absolute; top:0; left:0; width:100%; height:100%;
-    display:block; touch-action:none;
-  }
-  #emptyState{
-    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-    flex-direction:column; gap:14px; color:var(--text-dim); text-align:center; padding:30px;
-  }
+      linear-gradient(45deg,#191c1f 25%,transparent 25%),linear-gradient(-45deg,#191c1f 25%,transparent 25%),
+      linear-gradient(45deg,transparent 75%,#191c1f 75%),linear-gradient(-45deg,transparent 75%,#191c1f 75%);
+    background-size:20px 20px; background-position:0 0,0 10px,10px -10px,-10px 0px; background-color:#101214; touch-action:none;}
+  #canvas{position:absolute; top:0; left:0; width:100%; height:100%; display:block; touch-action:none;}
+  #emptyState{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:14px; color:var(--text-dim); text-align:center; padding:30px;}
   #emptyState.hidden{display:none;}
   #emptyState svg{opacity:.35;}
-  #emptyState button{margin-top:6px;}
-  #toast{
-    position:absolute; left:50%; bottom:14px; transform:translateX(-50%) translateY(20px);
-    background:#000; color:var(--text); font-size:13px; padding:9px 16px; border-radius:8px;
-    opacity:0; transition:opacity .18s, transform .18s; pointer-events:none; white-space:nowrap;
-    border:1px solid var(--line);
-  }
+  #toast{position:absolute; left:50%; bottom:14px; transform:translateX(-50%) translateY(20px); background:#000; color:var(--text); font-size:13px; padding:9px 16px; border-radius:8px; opacity:0; transition:opacity .18s,transform .18s; pointer-events:none; white-space:nowrap; max-width:88%; text-overflow:ellipsis; overflow:hidden; border:1px solid var(--line); z-index:50;}
   #toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+  #coordReadout{position:absolute; top:8px; left:8px; font-family:var(--mono); font-size:11px; background:rgba(0,0,0,.55); color:var(--accent); padding:3px 7px; border-radius:6px; display:none; pointer-events:none; z-index:40;}
+  #coordReadout.show{display:block;}
 
-  /* ---------- Controls ---------- */
-  #controls{
-    flex:0 0 auto; background:var(--panel);
-    border-top:1px solid var(--line);
-    padding:8px 8px calc(8px + env(safe-area-inset-bottom)) 8px;
-    padding-bottom:max(8px, env(safe-area-inset-bottom));
-    display:flex; flex-direction:column; gap:8px;
-  }
+  /* crop overlay chrome */
+  #cropBar{position:absolute; left:0; right:0; bottom:0; display:none; flex-direction:column; gap:8px; padding:10px; background:rgba(20,23,26,.92); border-top:1px solid var(--line); z-index:60;}
+  #cropBar.show{display:flex;}
+  #cropAspects{display:flex; gap:6px; overflow-x:auto; padding-bottom:2px;}
+  .chip{flex:0 0 auto; font-family:var(--sans); font-size:12px; font-weight:600; padding:8px 12px; border-radius:20px; border:1px solid var(--line); background:var(--panel-2); color:var(--text);}
+  .chip.active{background:var(--accent); border-color:var(--accent); color:#0a1512;}
+
+  /* ---------- Controls (main bar) ---------- */
+  #controls{flex:0 0 auto; background:var(--panel); border-top:1px solid var(--line);
+    padding:8px 8px calc(8px + env(safe-area-inset-bottom)) 8px; padding-bottom:max(8px, env(safe-area-inset-bottom));
+    display:flex; flex-direction:column; gap:8px;}
   .row{display:flex; gap:8px;}
-  .row > *{flex:1;}
-  button{
-    font-family:var(--sans); font-size:14px; font-weight:600;
-    border:1px solid var(--line); background:var(--panel-2); color:var(--text);
-    border-radius:10px; padding:13px 8px; min-height:48px;
-    display:flex; align-items:center; justify-content:center; gap:6px;
-    cursor:pointer; user-select:none; transition:background .1s, transform .05s;
-  }
+  .row>*{flex:1;}
+  button{font-family:var(--sans); font-size:13.5px; font-weight:600; border:1px solid var(--line); background:var(--panel-2); color:var(--text);
+    border-radius:10px; padding:12px 6px; min-height:46px; display:flex; align-items:center; justify-content:center; gap:5px; cursor:pointer; user-select:none; transition:background .1s, transform .05s;}
   button:active{transform:scale(0.96); background:var(--line);}
   button:disabled{opacity:.35; pointer-events:none;}
   button.primary{background:var(--accent); border-color:var(--accent); color:#0a1512;}
@@ -117,15 +75,42 @@
   button.danger{color:var(--danger); border-color:#5a2a2a;}
   button.warn-toggle{color:var(--warn); border-color:#5a4726;}
   button.warn-toggle.active{background:var(--warn); color:#2b1c00; border-color:var(--warn);}
-  button.icon-only{flex:0 0 48px; padding:13px 0;}
-  #importInput{display:none;}
-  #classPill{
-    font-family:var(--mono); font-size:11px; color:var(--text-dim);
-    text-align:center; padding-top:1px;
-  }
-  #classPill b{color:var(--text);}
+  button.select-toggle.active{background:var(--select); border-color:var(--select); color:#2b1c00;}
+  button.icon-only{flex:0 0 46px; padding:12px 0;}
+  #importInput,#loadProjectInput{display:none;}
+  svg.i{width:17px; height:17px; stroke:currentColor; fill:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round;}
 
-  svg.i{width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round;}
+  /* ---------- Sheets / Modals ---------- */
+  .sheet-backdrop{position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:100; display:none;}
+  .sheet-backdrop.show{display:block;}
+  .sheet{position:fixed; left:0; right:0; bottom:0; max-height:86vh; background:var(--panel); border-top:1px solid var(--line);
+    border-radius:16px 16px 0 0; z-index:101; display:none; flex-direction:column; padding-bottom:env(safe-area-inset-bottom);}
+  .sheet.show{display:flex;}
+  .sheetHead{display:flex; align-items:center; justify-content:space-between; padding:14px 16px 8px 16px; border-bottom:1px solid var(--line);}
+  .sheetHead h2{font-size:15px; margin:0;}
+  .sheetHead button{min-height:34px; padding:6px 12px; flex:0 0 auto;}
+  .sheetBody{overflow-y:auto; padding:12px 16px 20px 16px; display:flex; flex-direction:column; gap:14px;}
+  details{border:1px solid var(--line); border-radius:10px; background:var(--panel-2); overflow:hidden;}
+  details+details{margin-top:8px;}
+  summary{padding:12px; font-weight:600; font-size:13.5px; cursor:pointer; list-style:none; display:flex; align-items:center; justify-content:space-between;}
+  summary::-webkit-details-marker{display:none;}
+  summary:after{content:"▾"; color:var(--text-dim); font-size:11px;}
+  details[open] summary:after{content:"▴";}
+  .detailsBody{padding:0 12px 12px 12px; display:flex; flex-direction:column; gap:10px;}
+  label{font-size:12px; color:var(--text-dim); display:flex; flex-direction:column; gap:4px;}
+  input[type=text],input[type=number]{font-family:var(--mono); font-size:13px; background:var(--bg); border:1px solid var(--line); color:var(--text); border-radius:8px; padding:9px 10px; width:100%;}
+  input[type=range]{width:100%;}
+  .kv{display:flex; justify-content:space-between; font-family:var(--mono); font-size:12px; padding:3px 0; border-bottom:1px dashed var(--line);}
+  .kv b{color:var(--text);}
+  .boxListItem{display:flex; align-items:center; gap:8px; padding:9px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg);}
+  .boxListItem.selected{border-color:var(--select); background:rgba(255,207,92,.08);}
+  .boxListItem span{flex:1; font-family:var(--mono); font-size:12.5px;}
+  .boxListItem button{flex:0 0 auto; min-height:34px; padding:6px 10px;}
+  .warnRow{padding:8px 10px; border:1px solid #5a4726; background:rgba(255,184,77,.06); border-radius:8px; font-size:12.5px; display:flex; justify-content:space-between; align-items:center; gap:8px;}
+  .warnRow button{flex:0 0 auto; min-height:32px; padding:5px 10px;}
+  .toggleRow{display:flex; align-items:center; justify-content:space-between; font-size:13px;}
+  .toggleRow input[type=checkbox]{width:20px; height:20px;}
+  small.hint{color:var(--text-dim); font-size:11.5px; line-height:1.4;}
 </style>
 </head>
 <body>
@@ -136,72 +121,275 @@
     <div id="headerLeft">
       <div id="counter">0 / 0</div>
       <div id="statusLine">
-        <span id="statusBadge" class="empty">No image</span>
-        <span id="objectsCounter">Objects: <b>0</b></span>
-        <span id="selectedTag">Box 1 selected</span>
+        <span id="statusBadge" class="badge empty">No image</span>
+        <span id="objectsCounter" style="font-family:var(--mono); font-size:11px; color:var(--text-dim);">Objects: <b>0</b></span>
+        <span id="selectedTag" class="badge select">Box 1 selected</span>
+        <span id="localSavedTag" class="badge local">Saved locally</span>
       </div>
     </div>
     <div id="progressWrap">
       <div>Annotated <span id="annotatedCount">0</span> / <span id="totalCount">0</span></div>
       <div id="progressBar"><div id="progressBarFill"></div></div>
     </div>
+    <button id="toolsBtn" type="button" title="Tools">⋮</button>
   </div>
 
   <!-- Viewer -->
   <div id="viewerWrap">
     <canvas id="canvas"></canvas>
+    <div id="coordReadout">0, 0</div>
     <div id="emptyState">
       <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
         <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>
       </svg>
-      <div>No images loaded yet.<br>Import a folder of photos to start labeling.</div>
+      <div>No images loaded yet.<br>Import photos to start labeling.</div>
       <button class="primary" id="emptyImportBtn" type="button">Import Images</button>
     </div>
     <div id="toast"></div>
+
+    <!-- Crop mode bottom bar (shown only while cropping) -->
+    <div id="cropBar">
+      <div id="cropAspects">
+        <button class="chip active" data-aspect="free" type="button">Free</button>
+        <button class="chip" data-aspect="1:1" type="button">1:1</button>
+        <button class="chip" data-aspect="4:3" type="button">4:3</button>
+        <button class="chip" data-aspect="16:9" type="button">16:9</button>
+        <button class="chip" data-aspect="3:4" type="button">3:4</button>
+        <button class="chip" data-aspect="9:16" type="button">9:16</button>
+      </div>
+      <div class="row">
+        <button id="cropCancelBtn" class="danger" type="button">Cancel</button>
+        <button id="cropResetBtn" type="button">Reset</button>
+        <button id="cropConfirmBtn" class="primary" type="button">Confirm Crop</button>
+      </div>
+    </div>
   </div>
 
-  <!-- Controls -->
+  <!-- Main controls (kept simple per spec) -->
   <div id="controls">
     <div class="row">
-      <button id="prevBtn" type="button">
-        <svg class="i" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>Prev
-      </button>
-      <button id="nextBtn" type="button">
-        Next<svg class="i" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
-      </button>
+      <button id="importBtn" type="button"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8M8 12h8"/></svg>Import</button>
+      <button id="cropBtn" type="button"><svg class="i" viewBox="0 0 24 24"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></svg>Crop</button>
+      <button id="resizeBtn" type="button"><svg class="i" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>Resize</button>
     </div>
     <div class="row">
-      <button id="saveBtn" class="primary" type="button">
-        <svg class="i" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Save
-      </button>
+      <button id="undoBtn" class="icon-only" type="button" title="Undo"><svg class="i" viewBox="0 0 24 24"><path d="M3 7v6h6"/><path d="M3 13a9 9 0 1 0 3-6.7L3 9"/></svg></button>
+      <button id="redoBtn" class="icon-only" type="button" title="Redo"><svg class="i" viewBox="0 0 24 24"><path d="M21 7v6h-6"/><path d="M21 13a9 9 0 1 1-3-6.7L21 9"/></svg></button>
+      <button id="prevBtn" type="button"><svg class="i" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>Prev</button>
+      <button id="nextBtn" type="button">Next<svg class="i" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></button>
+    </div>
+    <div class="row">
+      <button id="saveBtn" class="primary" type="button"><svg class="i" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Save</button>
       <button id="noObjBtn" class="warn-toggle" type="button">No Object</button>
     </div>
     <div class="row">
-      <button id="undoBtn" class="icon-only" type="button" title="Undo">
-        <svg class="i" viewBox="0 0 24 24"><path d="M3 7v6h6"/><path d="M3 13a9 9 0 1 0 3-6.7L3 9"/></svg>
-      </button>
-      <button id="deleteSelectedBtn" class="danger" type="button">
-        <svg class="i" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>Delete Selected
-      </button>
+      <button id="deleteSelectedBtn" class="danger" type="button">Delete Selected</button>
+      <button id="clearAllBtn" class="danger" type="button">Clear All</button>
     </div>
     <div class="row">
-      <button id="clearAllBtn" class="danger" type="button">
-        <svg class="i" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>Clear All
-      </button>
-      <button id="importBtn" type="button">
-        <svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8M8 12h8"/></svg>Import
-      </button>
-      <input type="file" id="importInput" accept="image/jpeg,image/png,image/webp" multiple>
+      <button id="exportBtn" class="primary" type="button"><svg class="i" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>Export Dataset</button>
     </div>
-    <div class="row">
-      <button id="exportBtn" class="primary" type="button">
-        <svg class="i" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
-        Export Dataset (.zip)
-      </button>
-    </div>
-    <div id="classPill">class 0: <b>object</b> &nbsp;•&nbsp; single-class detector, multi-box per image</div>
+    <input type="file" id="importInput" accept="image/jpeg,image/png,image/webp" multiple>
   </div>
 
+</div>
+
+<!-- ===================== TOOLS SHEET ===================== -->
+<div class="sheet-backdrop" id="toolsBackdrop"></div>
+<div class="sheet" id="toolsSheet">
+  <div class="sheetHead"><h2>Tools</h2><button id="toolsCloseBtn" type="button">Close</button></div>
+  <div class="sheetBody">
+
+    <details>
+      <summary>Zoom &amp; View</summary>
+      <div class="detailsBody">
+        <div class="row">
+          <button id="zoomOutBtn" type="button">− Zoom</button>
+          <button id="zoomInBtn" type="button">+ Zoom</button>
+        </div>
+        <div class="row">
+          <button id="fitBtn" type="button">Fit to Screen</button>
+          <button id="resetZoomBtn" type="button">Reset Zoom</button>
+        </div>
+        <small class="hint">Pinch with two fingers to zoom/pan while viewing. Zoom is view-only — it never changes stored annotation coordinates.</small>
+      </div>
+    </details>
+
+    <details>
+      <summary>Rotate &amp; Flip</summary>
+      <div class="detailsBody">
+        <div class="row">
+          <button id="rotateCcwBtn" type="button">⟲ Rotate CCW</button>
+          <button id="rotateCwBtn" type="button">⟳ Rotate CW</button>
+        </div>
+        <div class="row">
+          <button id="flipHBtn" type="button">⇋ Flip Horizontal</button>
+          <button id="flipVBtn" type="button">⇵ Flip Vertical</button>
+        </div>
+        <button id="resetToOriginalBtn" class="danger" type="button">Reset to Original</button>
+        <small class="hint">Rotate/flip re-bake the image and remap every box exactly (no approximation). "Reset to Original" discards any crop/resize/rotate/flip and all boxes for this image, since they no longer correspond to the original pixels.</small>
+      </div>
+    </details>
+
+    <details>
+      <summary>Box Tools</summary>
+      <div class="detailsBody">
+        <button id="duplicateBtn" type="button">Duplicate Selected Box</button>
+        <div id="boxListWrap" style="display:flex; flex-direction:column; gap:6px;"></div>
+      </div>
+    </details>
+
+    <details>
+      <summary>Preview Adjustments <small class="hint" style="margin-left:6px;">(display only)</small></summary>
+      <div class="detailsBody">
+        <label>Brightness <span id="brightnessVal">100%</span>
+          <input type="range" id="brightnessRange" min="50" max="150" value="100">
+        </label>
+        <label>Contrast <span id="contrastVal">100%</span>
+          <input type="range" id="contrastRange" min="50" max="150" value="100">
+        </label>
+        <div class="toggleRow"><span>Grayscale preview</span><input type="checkbox" id="grayscaleCheck"></div>
+        <button id="resetPreviewBtn" type="button">Reset Preview</button>
+        <small class="hint">These only change how the image looks while you label. The exported image pixels are never affected.</small>
+      </div>
+    </details>
+
+    <details>
+      <summary>Visibility</summary>
+      <div class="detailsBody">
+        <div class="toggleRow"><span>Dim outside selected box</span><input type="checkbox" id="dimOutsideCheck"></div>
+        <div class="toggleRow"><span>Grid overlay</span><input type="checkbox" id="gridCheck"></div>
+        <div class="toggleRow"><span>Crosshair while drawing</span><input type="checkbox" id="crosshairCheck"></div>
+        <div class="toggleRow"><span>Coordinate readout</span><input type="checkbox" id="coordCheck"></div>
+        <label>Box fill opacity <span id="opacityVal">14%</span>
+          <input type="range" id="opacityRange" min="0" max="60" value="14">
+        </label>
+      </div>
+    </details>
+
+    <details>
+      <summary>Metadata</summary>
+      <div class="detailsBody" id="metadataBody">
+        <div class="kv"><span>Filename</span><b id="metaFilename">—</b></div>
+        <div class="kv"><span>Original</span><b id="metaOriginal">—</b></div>
+        <div class="kv"><span>Prepared</span><b id="metaPrepared">—</b></div>
+        <div class="kv"><span>Objects</span><b id="metaObjects">—</b></div>
+        <div class="kv"><span>Status</span><b id="metaStatus">—</b></div>
+      </div>
+    </details>
+
+    <details>
+      <summary>Filter &amp; Jump</summary>
+      <div class="detailsBody">
+        <div id="filterChips" style="display:flex; gap:6px; flex-wrap:wrap;">
+          <button class="chip active" data-filter="all" type="button">All</button>
+          <button class="chip" data-filter="annotated" type="button">Annotated</button>
+          <button class="chip" data-filter="unannotated" type="button">Not annotated</button>
+          <button class="chip" data-filter="negative" type="button">No Object</button>
+          <button class="chip" data-filter="review" type="button">Needs Review</button>
+        </div>
+        <div class="row">
+          <input type="number" id="jumpInput" min="1" placeholder="Image #">
+          <button id="jumpBtn" type="button">Go</button>
+        </div>
+      </div>
+    </details>
+
+    <details>
+      <summary>Statistics &amp; Validation</summary>
+      <div class="detailsBody">
+        <button id="statsBtn" type="button">View Dataset Statistics</button>
+        <button id="validateBtn" type="button">Run Validation Check</button>
+      </div>
+    </details>
+
+    <details>
+      <summary>Local Save &amp; Project File</summary>
+      <div class="detailsBody">
+        <label>Project name
+          <input type="text" id="projectNameInput" value="dataset">
+        </label>
+        <div class="row">
+          <button id="saveProjectBtn" type="button">Save Project (.json)</button>
+          <button id="loadProjectBtn" type="button">Load Project</button>
+        </div>
+        <button id="clearLocalBtn" class="danger" type="button">Clear Local Project Data</button>
+        <input type="file" id="loadProjectInput" accept="application/json">
+        <small class="hint">Project files store box coordinates and the exact crop/resize/rotate/flip steps applied — not image pixels (browsers can't reliably persist arbitrary files across sessions). After loading a project, re-import the same original image files and TapBox reattaches your work automatically by matching filename + size + modified date.</small>
+      </div>
+    </details>
+
+  </div>
+</div>
+
+<!-- ===================== RESIZE SHEET ===================== -->
+<div class="sheet-backdrop" id="resizeBackdrop"></div>
+<div class="sheet" id="resizeSheet">
+  <div class="sheetHead"><h2>Resize Prepared Image</h2><button id="resizeCloseBtn" type="button">Close</button></div>
+  <div class="sheetBody">
+    <div id="resizePresets" style="display:flex; gap:6px; flex-wrap:wrap;">
+      <button class="chip" data-w="256" data-h="256" type="button">256×256</button>
+      <button class="chip" data-w="320" data-h="320" type="button">320×320</button>
+      <button class="chip" data-w="416" data-h="416" type="button">416×416</button>
+      <button class="chip" data-w="512" data-h="512" type="button">512×512</button>
+      <button class="chip" data-w="640" data-h="640" type="button">640×640</button>
+    </div>
+    <div class="row">
+      <label>Width <input type="number" id="resizeWInput" min="1"></label>
+      <label>Height <input type="number" id="resizeHInput" min="1"></label>
+    </div>
+    <div id="resizeModes" style="display:flex; gap:6px; flex-wrap:wrap;">
+      <button class="chip active" data-mode="letterbox" type="button">Fit + Letterbox</button>
+      <button class="chip" data-mode="stretch" type="button">Stretch</button>
+      <button class="chip" data-mode="crop-fit" type="button">Crop to Fit</button>
+    </div>
+    <small class="hint" id="resizeModeHint">Fit + Letterbox: scales the image to fit inside the target size, preserving aspect ratio, and pads the rest with black. No distortion, no cropping.</small>
+    <div class="row">
+      <button id="resizeCancelBtn" class="danger" type="button">Cancel</button>
+      <button id="resizeApplyBtn" class="primary" type="button">Apply Resize</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== STATS SHEET ===================== -->
+<div class="sheet-backdrop" id="statsBackdrop"></div>
+<div class="sheet" id="statsSheet">
+  <div class="sheetHead"><h2>Dataset Statistics</h2><button id="statsCloseBtn" type="button">Close</button></div>
+  <div class="sheetBody" id="statsBody"></div>
+</div>
+
+<!-- ===================== VALIDATION SHEET ===================== -->
+<div class="sheet-backdrop" id="validateBackdrop"></div>
+<div class="sheet" id="validateSheet">
+  <div class="sheetHead"><h2>Validation</h2><button id="validateCloseBtn" type="button">Close</button></div>
+  <div class="sheetBody" id="validateBody"></div>
+</div>
+
+<!-- ===================== EXPORT SHEET ===================== -->
+<div class="sheet-backdrop" id="exportBackdrop"></div>
+<div class="sheet" id="exportSheet">
+  <div class="sheetHead"><h2>Export Dataset</h2><button id="exportCloseBtn" type="button">Close</button></div>
+  <div class="sheetBody">
+    <div id="exportStats" style="display:flex; flex-direction:column; gap:2px;"></div>
+    <label>Dataset name
+      <input type="text" id="datasetNameInput" value="dataset">
+    </label>
+    <div>
+      <div style="font-size:12px; color:var(--text-dim); margin-bottom:6px;">Label formats</div>
+      <div class="toggleRow"><span>YOLO (.txt)</span><input type="checkbox" id="fmtYoloCheck" checked disabled></div>
+      <div class="toggleRow"><span>COCO JSON</span><input type="checkbox" id="fmtCocoCheck"></div>
+      <div class="toggleRow"><span>Pascal VOC XML</span><input type="checkbox" id="fmtVocCheck"></div>
+    </div>
+    <div class="toggleRow"><span>Enable train / validation / test split</span><input type="checkbox" id="splitEnableCheck"></div>
+    <div class="row" id="splitInputsRow" style="display:none;">
+      <label>Train % <input type="number" id="splitTrainInput" value="80" min="0" max="100"></label>
+      <label>Val % <input type="number" id="splitValInput" value="10" min="0" max="100"></label>
+      <label>Test % <input type="number" id="splitTestInput" value="10" min="0" max="100"></label>
+    </div>
+    <div id="splitPreview" style="font-family:var(--mono); font-size:12px; color:var(--text-dim); display:none;"></div>
+    <div id="exportWarning" class="warnRow" style="display:none;"></div>
+    <button id="exportRunBtn" class="primary" type="button">Export Dataset</button>
+  </div>
 </div>
 
 <!-- JSZip — used only for building the export .zip client-side -->
@@ -211,40 +399,63 @@
 "use strict";
 
 /* =========================================================================
-   STATE
-   Each image record now holds an ARRAY of boxes instead of a single box.
+   OVERVIEW OF THE COORDINATE PIPELINE
+   ------------------------------------------------------------------------
+   Original image
+        |  (immutable — rec.originalFile / rec.originalImg, never modified)
+        v
+   Working image  ---- crop / resize / rotate / flip ---->  Working image
+        |  (rec.working: {kind, source, width, height} — this IS the
+        |   coordinate system rec.boxes are stored in, always)
+        v
+   Fit transform (getFitTransform) — letterboxes working image into the
+        |  on-screen canvas, independent of working image's actual size
+        v
+   View transform (zoom/pan) — user pinch-zoom/pan, purely visual
+        v
+   Screen / touch coordinates
 
-   {
-     id: string (unique, = original file name, de-duplicated if needed),
-     file: File,                 // original file, bytes untouched, used for export
-     url: string,                 // objectURL for <img> display
-     img: HTMLImageElement|null,  // lazily loaded
-     naturalWidth, naturalHeight: number|null,
-     boxes: [                     // ORIGINAL IMAGE PIXEL coordinates, one entry per object
-       { x, y, w, h, classId }, ...
-     ],
-     negative: boolean,           // "No object" flag (mutually exclusive with boxes)
-     annotated: boolean           // has been explicitly saved (>=1 box, or negative)
-   }
-
-   Selection (state.selectedIndex) is an index into the CURRENT image's
-   boxes array, or -1 if nothing is selected. It resets whenever you
-   navigate to a different image, same as the undo stack.
+   screenToImage()/imageToScreen() convert between the LAST layer (screen)
+   and the FIRST layer that matters for storage (working image pixels).
+   Every crop/resize/rotate/flip operation immediately re-bakes the pixels
+   into a brand new working canvas AND re-maps every existing box through
+   the matching transformBoxAfter*() function, so rec.boxes is always
+   correct for rec.working at all times — there is never an intermediate
+   state where boxes and pixels disagree.
    ========================================================================= */
-
-const state = {
-  images: [],         // array of records, in load order
-  current: -1,         // index into images
-  selectedIndex: -1,    // index into images[current].boxes, or -1
-  undoStack: [],        // stack of {boxes, negative} snapshots for the CURRENT image only
-  drag: null            // active pointer interaction descriptor, or null
-};
 
 const CLASS_ID = 0;
 const CLASS_NAME = "object";
-const HANDLE_HIT_RADIUS = 26;   // CSS px, touch-friendly hit test radius for corner handles
-const HANDLE_DRAW_RADIUS = 9;   // CSS px, visual radius of corner handle dot
-const MIN_BOX_PX = 4;           // minimum box size in original image pixels
+const HANDLE_HIT_RADIUS = 26;
+const HANDLE_DRAW_RADIUS = 9;
+const EDGE_HIT_WIDTH = 20;
+const MIN_BOX_PX = 4;
+const TINY_AREA_FRACTION = 0.0005;   // < 0.05% of image area => "tiny box" warning
+const EDGE_TOUCH_PX = 2;             // within this many px of the boundary => "touches edge" warning
+const LS_KEY = "tapbox_project_v1";
+
+const state = {
+  images: [],
+  current: -1,
+  selectedIndex: -1,
+  undoStack: [],
+  redoStack: [],
+  drag: null,
+  pointers: new Map(),   // active pointerId -> {x,y} in canvas CSS px, for pinch detection
+  pinch: null,
+  view: { zoom: 1, panX: 0, panY: 0 },
+  mode: "annotate",       // "annotate" | "crop"
+  cropRect: null,
+  cropAspect: "free",
+  preview: { brightness: 100, contrast: 100, grayscale: false },
+  showGrid: false, showCrosshair: false, dimOutside: false, coordReadout: false,
+  boxOpacity: 0.14,
+  filter: "all",
+  filteredIndices: [],
+  lastPointerImagePt: null,
+  pendingRestore: new Map(),  // fingerprint -> saved record data, from localStorage or a loaded project file
+  autosaveTimer: null
+};
 
 /* ---------------------------------------------------------------------
    DOM references
@@ -254,11 +465,13 @@ const ctx = canvas.getContext("2d");
 const viewerWrap = document.getElementById("viewerWrap");
 const emptyState = document.getElementById("emptyState");
 const toastEl = document.getElementById("toast");
+const coordReadoutEl = document.getElementById("coordReadout");
 
 const counterEl = document.getElementById("counter");
 const statusBadge = document.getElementById("statusBadge");
 const objectsCounterEl = document.getElementById("objectsCounter");
 const selectedTagEl = document.getElementById("selectedTag");
+const localSavedTagEl = document.getElementById("localSavedTag");
 const annotatedCountEl = document.getElementById("annotatedCount");
 const totalCountEl = document.getElementById("totalCount");
 const progressBarFill = document.getElementById("progressBarFill");
@@ -268,26 +481,29 @@ const nextBtn = document.getElementById("nextBtn");
 const saveBtn = document.getElementById("saveBtn");
 const noObjBtn = document.getElementById("noObjBtn");
 const undoBtn = document.getElementById("undoBtn");
+const redoBtn = document.getElementById("redoBtn");
 const deleteSelectedBtn = document.getElementById("deleteSelectedBtn");
 const clearAllBtn = document.getElementById("clearAllBtn");
 const importBtn = document.getElementById("importBtn");
 const emptyImportBtn = document.getElementById("emptyImportBtn");
 const importInput = document.getElementById("importInput");
 const exportBtn = document.getElementById("exportBtn");
+const cropBtn = document.getElementById("cropBtn");
+const resizeBtn = document.getElementById("resizeBtn");
 
-/* ---------------------------------------------------------------------
-   Small UI helpers
-   --------------------------------------------------------------------- */
-let toastTimer = null;
-function toast(msg, ms){
+function toastMsg(msg, ms){
   toastEl.textContent = msg;
   toastEl.classList.add("show");
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(()=>toastEl.classList.remove("show"), ms || 1600);
+  clearTimeout(toastMsg._t);
+  toastMsg._t = setTimeout(()=>toastEl.classList.remove("show"), ms || 1700);
 }
+function currentRecord(){ return state.current >= 0 ? state.images[state.current] : null; }
 
-function currentRecord(){
-  return state.current >= 0 ? state.images[state.current] : null;
+/* =========================================================================
+   FINGERPRINTING (for local persistence / project reattachment)
+   ========================================================================= */
+function fingerprintFile(file){
+  return file.name + "|" + file.size + "|" + (file.lastModified || 0);
 }
 
 /* =========================================================================
@@ -295,148 +511,154 @@ function currentRecord(){
    ========================================================================= */
 function loadImages(fileList){
   const files = Array.from(fileList).filter(f => /^image\/(jpeg|png|webp)$/.test(f.type));
-  if(files.length === 0){
-    toast("No supported image files selected");
-    return;
-  }
+  if(files.length === 0){ toastMsg("No supported image files selected"); return; }
 
   const wasEmpty = state.images.length === 0;
   const existingIds = new Set(state.images.map(r => r.id));
+  let restoredCount = 0;
 
   files.forEach(file => {
-    let id = file.name;
-    // de-duplicate names so each image has a unique key for the annotation map
-    let n = 1;
+    let id = file.name, n = 1;
     while(existingIds.has(id)){
       const dot = file.name.lastIndexOf(".");
       const base = dot === -1 ? file.name : file.name.slice(0, dot);
       const ext = dot === -1 ? "" : file.name.slice(dot);
-      id = base + "__" + n + ext;
-      n++;
+      id = base + "__" + n + ext; n++;
     }
     existingIds.add(id);
 
-    state.images.push({
-      id: id,
-      file: file,
+    const rec = {
+      id, file,
       url: URL.createObjectURL(file),
-      img: null,
-      naturalWidth: null,
-      naturalHeight: null,
-      boxes: [],       // <-- multi-box array (was a single `box` object before)
-      negative: false,
-      annotated: false
-    });
+      originalFile: file,
+      originalImg: null, originalWidth: null, originalHeight: null,
+      working: null,           // set once the image finishes loading
+      boxes: [], negative: false, annotated: false,
+      prepHistory: [],
+      fingerprint: fingerprintFile(file)
+    };
+    state.images.push(rec);
+
+    const saved = state.pendingRestore.get(rec.fingerprint);
+    if(saved) restoredCount++;
   });
 
   updateProgressUI();
-  toast(files.length + " image" + (files.length === 1 ? "" : "s") + " imported");
+  toastMsg(files.length + " image" + (files.length === 1 ? "" : "s") + " imported" +
+    (restoredCount ? " — restoring " + restoredCount + " saved annotation" + (restoredCount===1?"":"s") : ""));
 
-  if(wasEmpty){
-    state.current = 0;
-    showImage(0);
-  } else {
-    // Just refresh counters/nav state, stay on current image.
-    refreshNavUI();
-  }
+  recomputeFilter();
+  if(wasEmpty){ state.current = 0; showImage(0); } else { refreshNavUI(); }
 }
 
 /* =========================================================================
-   2. SHOW IMAGE  (loads + draws the image at `index`, restores its boxes)
+   2. SHOW IMAGE
    ========================================================================= */
 function showImage(index){
   if(index < 0 || index >= state.images.length) return;
-
   state.current = index;
-  state.undoStack = [];    // undo history is per-image
-  state.selectedIndex = -1; // selection is per-image too
+  state.undoStack = []; state.redoStack = [];
+  state.selectedIndex = -1;
+  state.view = { zoom: 1, panX: 0, panY: 0 };
+  state.mode = "annotate"; state.cropRect = null;
+  document.getElementById("cropBar").classList.remove("show");
   const rec = state.images[index];
-
   emptyState.classList.add("hidden");
 
-  const drawWhenReady = () => {
-    resizeCanvasToViewer();
-    render();
-    refreshNavUI();
-  };
+  const ready = () => { resizeCanvasToViewer(); render(); refreshNavUI(); refreshMetadataPanel(); refreshBoxList(); };
 
-  if(rec.img){
-    drawWhenReady();
-    return;
-  }
+  if(rec.working){ ready(); return; }
 
   const image = new Image();
   image.onload = function(){
-    rec.img = image;
-    rec.naturalWidth = image.naturalWidth;
-    rec.naturalHeight = image.naturalHeight;
-    // Only redraw if we're still looking at this image (user may have navigated fast)
-    if(state.current === index) drawWhenReady();
+    rec.originalImg = image;
+    rec.originalWidth = image.naturalWidth;
+    rec.originalHeight = image.naturalHeight;
+
+    const applyRestore = async () => {
+      const saved = state.pendingRestore.get(rec.fingerprint);
+      rec.working = { kind: "original", source: image, width: image.naturalWidth, height: image.naturalHeight };
+      if(saved){
+        // Replay the exact prep-operation history so pixels and saved box
+        // coordinates line up again, without ever storing image bytes.
+        for(const op of (saved.prepHistory || [])){
+          if(op.type === "crop") applyCrop(rec, op.rect, true);
+          else if(op.type === "resize") applyResize(rec, op.targetW, op.targetH, op.mode, true);
+          else if(op.type === "rotate") applyRotate(rec, op.dir, true);
+          else if(op.type === "flip") applyFlip(rec, op.axis, true);
+        }
+        // Silent replay no longer appends to rec.prepHistory (see applyCrop/
+        // applyResize/applyRotate/applyFlip) — set it directly from the saved
+        // record instead of relying on replay side effects. This is what
+        // guarantees no duplication no matter how many times a restore ever runs.
+        rec.prepHistory = (saved.prepHistory || []).map(op => ({...op}));
+        rec.boxes = (saved.boxes || []).map(b => ({...b}));
+        rec.negative = !!saved.negative;
+        rec.annotated = !!saved.annotated;
+      }
+      if(state.current === index) ready();
+    };
+    applyRestore();
   };
-  image.onerror = function(){
-    toast("Failed to load: " + rec.id);
-  };
+  image.onerror = function(){ toastMsg("Failed to load: " + rec.id); };
   image.src = rec.url;
 }
 
-function nextImage(){
-  if(state.images.length === 0) return;
-  if(state.current < state.images.length - 1) showImage(state.current + 1);
-  else toast("Last image");
+function visibleIndices(){
+  return state.filter === "all" ? state.images.map((_, i) => i) : state.filteredIndices;
 }
-
+function nextImage(){
+  const list = visibleIndices();
+  if(list.length === 0) return;
+  const pos = list.indexOf(state.current);
+  if(pos === -1){ showImage(list[0]); return; }
+  if(pos < list.length - 1) showImage(list[pos + 1]); else toastMsg("Last image in this filter");
+}
 function previousImage(){
-  if(state.images.length === 0) return;
-  if(state.current > 0) showImage(state.current - 1);
-  else toast("First image");
+  const list = visibleIndices();
+  if(list.length === 0) return;
+  const pos = list.indexOf(state.current);
+  if(pos === -1){ showImage(list[0]); return; }
+  if(pos > 0) showImage(list[pos - 1]); else toastMsg("First image in this filter");
+}
+function jumpToImage(oneBasedIndex){
+  const idx = Math.round(oneBasedIndex) - 1;
+  if(idx < 0 || idx >= state.images.length){ toastMsg("Out of range"); return; }
+  showImage(idx);
 }
 
 /* =========================================================================
-   COORDINATE SYSTEM
-   ------------------------------------------------------------------------
-   There are three coordinate spaces in play:
-
-   1. ORIGINAL IMAGE pixels   — image.naturalWidth x naturalHeight. This is
-      the ONLY space annotations are stored/exported in.
-   2. CANVAS CSS pixels        — the on-screen canvas element, sized by CSS
-      (getBoundingClientRect()). Pointer events give coordinates in this
-      space (after subtracting the canvas's on-screen offset).
-   3. CANVAS DEVICE pixels     — canvas.width/height, which we set to
-      CSS size * devicePixelRatio for a crisp draw. We call
-      ctx.scale(dpr, dpr) once so all drawing code below can pretend it's
-      working in CSS pixels (space #2) and the browser handles the rest.
-
-   getFitTransform() computes how the image (space 1) is letterboxed into
-   the canvas (space 2): a uniform `scale` plus (offsetX, offsetY) so the
-   image is centered. All conversions below go through this transform.
-   This is unchanged from the single-box version — multi-box support only
-   changes WHICH box a given point is tested against, not the math itself.
+   COORDINATE TRANSFORM CORE
    ========================================================================= */
-
 function getFitTransform(rec, cssWidth, cssHeight){
-  const iw = rec.naturalWidth, ih = rec.naturalHeight;
+  const iw = rec.working.width, ih = rec.working.height;
   const scale = Math.min(cssWidth / iw, cssHeight / ih);
-  const drawWidth = iw * scale;
-  const drawHeight = ih * scale;
-  const offsetX = (cssWidth - drawWidth) / 2;
-  const offsetY = (cssHeight - drawHeight) / 2;
-  return { scale, offsetX, offsetY, drawWidth, drawHeight };
+  const drawWidth = iw * scale, drawHeight = ih * scale;
+  return { scale, offsetX: (cssWidth - drawWidth) / 2, offsetY: (cssHeight - drawHeight) / 2, drawWidth, drawHeight };
 }
 
-// canvas CSS-pixel point -> original image pixel point (clamped to image bounds)
-function canvasToImage(rec, t, cx, cy){
-  const ix = (cx - t.offsetX) / t.scale;
-  const iy = (cy - t.offsetY) / t.scale;
+// Composes the base "fit to screen" transform with the user's view zoom/pan
+// (zoom centered on the canvas, then panned). This is the transform used
+// for ALL rendering and pointer math while in normal annotate mode.
+function getEffectiveTransform(rec, cssWidth, cssHeight){
+  const fit = getFitTransform(rec, cssWidth, cssHeight);
+  const z = state.view.zoom;
+  const cx = cssWidth / 2, cy = cssHeight / 2;
   return {
-    x: Math.min(Math.max(ix, 0), rec.naturalWidth),
-    y: Math.min(Math.max(iy, 0), rec.naturalHeight)
+    scale: fit.scale * z,
+    offsetX: cx - cx * z + fit.offsetX * z + state.view.panX,
+    offsetY: cy - cy * z + fit.offsetY * z + state.view.panY
   };
 }
 
-// original image pixel point -> canvas CSS-pixel point
-function imageToCanvas(t, ix, iy){
-  return { x: t.offsetX + ix * t.scale, y: t.offsetY + iy * t.scale };
+// screen (canvas CSS-pixel) point -> working-image pixel point, clamped to bounds
+function screenToImage(rec, t, sx, sy){
+  const ix = (sx - t.offsetX) / t.scale;
+  const iy = (sy - t.offsetY) / t.scale;
+  return { x: Math.min(Math.max(ix, 0), rec.working.width), y: Math.min(Math.max(iy, 0), rec.working.height) };
 }
+// working-image pixel point -> screen (canvas CSS-pixel) point
+function imageToScreen(t, ix, iy){ return { x: t.offsetX + ix * t.scale, y: t.offsetY + iy * t.scale }; }
 
 function getPointerPos(evt){
   const r = canvas.getBoundingClientRect();
@@ -444,537 +666,1121 @@ function getPointerPos(evt){
 }
 
 /* =========================================================================
-   CANVAS SIZING / RENDER
+   BOX GEOMETRY TRANSFORMS — used by crop / resize / rotate / flip
+   ========================================================================= */
+function transformBoxAfterCrop(box, cropRect){
+  const x1 = Math.max(box.x, cropRect.x), y1 = Math.max(box.y, cropRect.y);
+  const x2 = Math.min(box.x + box.w, cropRect.x + cropRect.w), y2 = Math.min(box.y + box.h, cropRect.y + cropRect.h);
+  if(x2 <= x1 || y2 <= y1) return null; // box falls entirely outside the crop — dropped, never silently kept wrong
+  return { x: x1 - cropRect.x, y: y1 - cropRect.y, w: x2 - x1, h: y2 - y1, classId: box.classId };
+}
+
+function transformBoxAfterResize(box, oldW, oldH, newW, newH, mode, params){
+  if(mode === "stretch"){
+    const sx = newW / oldW, sy = newH / oldH;
+    return { x: box.x * sx, y: box.y * sy, w: box.w * sx, h: box.h * sy, classId: box.classId };
+  }
+  if(mode === "letterbox"){
+    const { scale, ox, oy } = params;
+    return { x: box.x * scale + ox, y: box.y * scale + oy, w: box.w * scale, h: box.h * scale, classId: box.classId };
+  }
+  if(mode === "crop-fit"){
+    const cropped = transformBoxAfterCrop(box, params.cropRect);
+    if(!cropped) return null;
+    const scale = newW / params.cropRect.w; // crop rect was built to exactly match target aspect, so this is uniform
+    return { x: cropped.x * scale, y: cropped.y * scale, w: cropped.w * scale, h: cropped.h * scale, classId: box.classId };
+  }
+  return null;
+}
+
+function transformBoxAfterRotation(box, oldW, oldH, dir){
+  const corners = [[box.x,box.y],[box.x+box.w,box.y],[box.x,box.y+box.h],[box.x+box.w,box.y+box.h]];
+  const mapped = corners.map(([ox,oy]) => dir === "cw" ? [oldH - oy, ox] : [oy, oldW - ox]);
+  const xs = mapped.map(p=>p[0]), ys = mapped.map(p=>p[1]);
+  const x = Math.min(...xs), y = Math.min(...ys), w = Math.max(...xs) - x, h = Math.max(...ys) - y;
+  if(w <= 0 || h <= 0) return null;
+  return { x, y, w, h, classId: box.classId };
+}
+
+function transformBoxAfterFlip(box, imgW, imgH, axis){
+  if(axis === "h") return { x: imgW - (box.x + box.w), y: box.y, w: box.w, h: box.h, classId: box.classId };
+  return { x: box.x, y: imgH - (box.y + box.h), w: box.w, h: box.h, classId: box.classId };
+}
+
+/* =========================================================================
+   DESTRUCTIVE PREP OPERATIONS (crop / resize / rotate / flip)
+   Each one bakes new pixels into a fresh <canvas> (never mutating the old
+   source) and remaps every box through the matching transform function.
+   `silent` skips the undo push + toast, used when replaying prepHistory.
+   ========================================================================= */
+function applyCrop(rec, cropRect, silent){
+  if(!silent) pushUndo();
+  // Defensive final clamp: guarantees the rasterized crop can never read
+  // outside the source image, regardless of how cropRect was produced.
+  const safe = clampCropRectToBounds(cropRect, rec.working.width, rec.working.height, null);
+  const src = rec.working.source;
+  const cw = Math.max(1, Math.round(safe.w)), ch = Math.max(1, Math.round(safe.h));
+  const canvasEl = document.createElement("canvas");
+  canvasEl.width = cw; canvasEl.height = ch;
+  canvasEl.getContext("2d").drawImage(src, safe.x, safe.y, safe.w, safe.h, 0, 0, cw, ch);
+  rec.boxes = rec.boxes.map(b => transformBoxAfterCrop(b, safe)).filter(Boolean);
+  rec.working = { kind: "prepared", source: canvasEl, width: cw, height: ch };
+  if(!silent) rec.prepHistory.push({ type: "crop", rect: { x: safe.x, y: safe.y, w: safe.w, h: safe.h } });
+}
+
+function applyResize(rec, targetW, targetH, mode, silent){
+  if(!silent) pushUndo();
+  const src = rec.working.source, ow = rec.working.width, oh = rec.working.height;
+  const canvasEl = document.createElement("canvas");
+  canvasEl.width = targetW; canvasEl.height = targetH;
+  const cctx = canvasEl.getContext("2d");
+  let newBoxes;
+  if(mode === "stretch"){
+    cctx.drawImage(src, 0, 0, ow, oh, 0, 0, targetW, targetH);
+    newBoxes = rec.boxes.map(b => transformBoxAfterResize(b, ow, oh, targetW, targetH, "stretch"));
+  } else if(mode === "crop-fit"){
+    const targetAspect = targetW / targetH, srcAspect = ow / oh;
+    let cropRect;
+    if(srcAspect > targetAspect){ const ch = oh, cw = oh * targetAspect; cropRect = { x:(ow-cw)/2, y:0, w:cw, h:ch }; }
+    else { const cw = ow, ch = ow / targetAspect; cropRect = { x:0, y:(oh-ch)/2, w:cw, h:ch }; }
+    cctx.drawImage(src, cropRect.x, cropRect.y, cropRect.w, cropRect.h, 0, 0, targetW, targetH);
+    newBoxes = rec.boxes.map(b => transformBoxAfterResize(b, ow, oh, targetW, targetH, "crop-fit", { cropRect }));
+  } else { // letterbox (default) — no distortion, no cropping
+    const scale = Math.min(targetW / ow, targetH / oh);
+    const dw = ow * scale, dh = oh * scale, ox = (targetW - dw) / 2, oy = (targetH - dh) / 2;
+    cctx.fillStyle = "#000"; cctx.fillRect(0, 0, targetW, targetH);
+    cctx.drawImage(src, 0, 0, ow, oh, ox, oy, dw, dh);
+    newBoxes = rec.boxes.map(b => transformBoxAfterResize(b, ow, oh, targetW, targetH, "letterbox", { scale, ox, oy }));
+  }
+  rec.boxes = newBoxes.filter(Boolean);
+  rec.working = { kind: "prepared", source: canvasEl, width: targetW, height: targetH };
+  if(!silent) rec.prepHistory.push({ type: "resize", targetW, targetH, mode });
+}
+
+function applyRotate(rec, dir, silent){
+  if(!silent) pushUndo();
+  const src = rec.working.source, ow = rec.working.width, oh = rec.working.height;
+  const canvasEl = document.createElement("canvas");
+  canvasEl.width = oh; canvasEl.height = ow;
+  const cctx = canvasEl.getContext("2d");
+  cctx.save();
+  if(dir === "cw"){ cctx.translate(oh, 0); cctx.rotate(Math.PI / 2); } else { cctx.translate(0, ow); cctx.rotate(-Math.PI / 2); }
+  cctx.drawImage(src, 0, 0, ow, oh);
+  cctx.restore();
+  rec.boxes = rec.boxes.map(b => transformBoxAfterRotation(b, ow, oh, dir)).filter(Boolean);
+  rec.working = { kind: "prepared", source: canvasEl, width: oh, height: ow };
+  if(!silent) rec.prepHistory.push({ type: "rotate", dir });
+}
+
+function applyFlip(rec, axis, silent){
+  if(!silent) pushUndo();
+  const src = rec.working.source, w = rec.working.width, h = rec.working.height;
+  const canvasEl = document.createElement("canvas");
+  canvasEl.width = w; canvasEl.height = h;
+  const cctx = canvasEl.getContext("2d");
+  cctx.save();
+  if(axis === "h"){ cctx.translate(w, 0); cctx.scale(-1, 1); } else { cctx.translate(0, h); cctx.scale(1, -1); }
+  cctx.drawImage(src, 0, 0, w, h);
+  cctx.restore();
+  rec.boxes = rec.boxes.map(b => transformBoxAfterFlip(b, w, h, axis));
+  rec.working = { kind: "prepared", source: canvasEl, width: w, height: h };
+  if(!silent) rec.prepHistory.push({ type: "flip", axis });
+}
+
+function resetToOriginal(){
+  const rec = currentRecord(); if(!rec) return;
+  if(rec.boxes.length > 0 || rec.prepHistory.length > 0){
+    const ok = confirm("This discards all crop/resize/rotate/flip edits and " + rec.boxes.length +
+      " box(es) on this image, since they won't match the original pixels anymore. Continue?");
+    if(!ok) return;
+  }
+  pushUndo();
+  rec.working = { kind: "original", source: rec.originalImg, width: rec.originalWidth, height: rec.originalHeight };
+  rec.boxes = []; rec.prepHistory = []; rec.negative = false; rec.annotated = false;
+  state.selectedIndex = -1;
+  resizeCanvasToViewer(); render(); refreshNavUI(); refreshMetadataPanel(); refreshBoxList(); scheduleAutosave();
+  toastMsg("Reset to original image");
+}
+
+/* =========================================================================
+   RENDER
    ========================================================================= */
 function resizeCanvasToViewer(){
   const dpr = window.devicePixelRatio || 1;
-  const cssW = viewerWrap.clientWidth;
-  const cssH = viewerWrap.clientHeight;
-  canvas.style.width = cssW + "px";
-  canvas.style.height = cssH + "px";
-  canvas.width = Math.round(cssW * dpr);
-  canvas.height = Math.round(cssH * dpr);
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.scale(dpr, dpr);
+  const cssW = viewerWrap.clientWidth, cssH = viewerWrap.clientHeight;
+  canvas.style.width = cssW + "px"; canvas.style.height = cssH + "px";
+  canvas.width = Math.round(cssW * dpr); canvas.height = Math.round(cssH * dpr);
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.scale(dpr, dpr);
 }
 
 function render(){
   const cssW = viewerWrap.clientWidth, cssH = viewerWrap.clientHeight;
   ctx.clearRect(0, 0, cssW, cssH);
-
   const rec = currentRecord();
-  if(!rec || !rec.img){
-    emptyState.classList.toggle("hidden", state.images.length !== 0);
+  if(!rec || !rec.working){ emptyState.classList.toggle("hidden", state.images.length !== 0); return; }
+
+  const t = getEffectiveTransform(rec, cssW, cssH);
+
+  ctx.save();
+  ctx.filter = "brightness(" + state.preview.brightness + "%) contrast(" + state.preview.contrast + "%)" +
+    (state.preview.grayscale ? " grayscale(1)" : "");
+  ctx.drawImage(rec.working.source, t.offsetX, t.offsetY, rec.working.width * t.scale, rec.working.height * t.scale);
+  ctx.restore();
+
+  if(state.showGrid) drawGrid(t, rec);
+
+  if(state.mode === "crop"){
+    rec.boxes.forEach((box, i) => drawBox(t, box, i, false, 0.35));
+    drawCropOverlay(t, rec);
     return;
   }
 
-  const t = getFitTransform(rec, cssW, cssH);
-  ctx.drawImage(rec.img, t.offsetX, t.offsetY, t.drawWidth, t.drawHeight);
-
-  // Dim the image slightly if marked "no object" so it reads as inactive
   if(rec.negative){
     ctx.fillStyle = "rgba(10,10,10,0.45)";
-    ctx.fillRect(t.offsetX, t.offsetY, t.drawWidth, t.drawHeight);
-    return; // no boxes to draw on a negative image
+    ctx.fillRect(t.offsetX, t.offsetY, rec.working.width * t.scale, rec.working.height * t.scale);
+    return;
   }
 
-  // Draw every box. Unselected boxes render first (thinner, teal); the
-  // selected box is drawn last (on top) with the highlight color and
-  // its resize handles, so it's always the most visually prominent.
-  rec.boxes.forEach((box, i) => {
-    if(i !== state.selectedIndex) drawBox(t, box, i, false);
-  });
-  if(state.selectedIndex >= 0 && rec.boxes[state.selectedIndex]){
-    drawBox(t, rec.boxes[state.selectedIndex], state.selectedIndex, true);
+  if(state.dimOutside && state.selectedIndex >= 0 && rec.boxes[state.selectedIndex]){
+    drawDimOutside(t, rec, rec.boxes[state.selectedIndex]);
   }
+
+  rec.boxes.forEach((box, i) => { if(i !== state.selectedIndex) drawBox(t, box, i, false, state.boxOpacity); });
+  if(state.selectedIndex >= 0 && rec.boxes[state.selectedIndex]) drawBox(t, rec.boxes[state.selectedIndex], state.selectedIndex, true, state.boxOpacity + 0.06);
 }
 
-function drawBox(t, box, index, selected){
-  const p1 = imageToCanvas(t, box.x, box.y);
-  const p2 = imageToCanvas(t, box.x + box.w, box.y + box.h);
-  const w = p2.x - p1.x, h = p2.y - p1.y;
-  const color = selected ? "#ffcf5c" : "#5ee3c1";
-  const darkText = "#1a1400";
-
+function drawGrid(t, rec){
   ctx.save();
-  ctx.strokeStyle = color;
-  ctx.lineWidth = selected ? 3 : 2;
-  ctx.shadowColor = "rgba(0,0,0,0.6)";
-  ctx.shadowBlur = selected ? 5 : 2;
-  ctx.strokeRect(p1.x, p1.y, w, h);
-
-  ctx.fillStyle = selected ? "rgba(255,207,92,0.16)" : "rgba(94,227,193,0.10)";
-  ctx.fillRect(p1.x, p1.y, w, h);
-
-  // numbered label chip, e.g. "1", "2" ...
-  ctx.shadowBlur = 0;
-  ctx.font = "700 12px monospace";
-  const label = String(index + 1);
-  const labelW = ctx.measureText(label).width + 14;
-  const labelY = Math.max(0, p1.y - 20);
-  ctx.fillStyle = color;
-  ctx.fillRect(p1.x, labelY, labelW, 20);
-  ctx.fillStyle = selected ? darkText : "#0a1512";
-  ctx.fillText(label, p1.x + 7, labelY + 14.5);
-
-  // corner handles — only drawn on the selected box, since only the
-  // selected box can be resized (unselected boxes are tap-to-select only)
-  if(selected){
-    const corners = [[p1.x,p1.y],[p2.x,p1.y],[p1.x,p2.y],[p2.x,p2.y]];
-    ctx.shadowBlur = 3;
-    ctx.shadowColor = "rgba(0,0,0,0.7)";
-    corners.forEach(([cx,cy])=>{
-      ctx.beginPath();
-      ctx.arc(cx, cy, HANDLE_DRAW_RADIUS, 0, Math.PI*2);
-      ctx.fillStyle = color;
-      ctx.fill();
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = darkText;
-      ctx.stroke();
-    });
+  ctx.strokeStyle = "rgba(255,255,255,0.12)"; ctx.lineWidth = 1;
+  const step = 8;
+  for(let i = 1; i < step; i++){
+    const gx = t.offsetX + (rec.working.width * t.scale) * (i / step);
+    ctx.beginPath(); ctx.moveTo(gx, t.offsetY); ctx.lineTo(gx, t.offsetY + rec.working.height * t.scale); ctx.stroke();
+    const gy = t.offsetY + (rec.working.height * t.scale) * (i / step);
+    ctx.beginPath(); ctx.moveTo(t.offsetX, gy); ctx.lineTo(t.offsetX + rec.working.width * t.scale, gy); ctx.stroke();
   }
   ctx.restore();
 }
 
-/* =========================================================================
-   3/4. BOUNDING BOX CREATE / SELECT / MOVE / RESIZE (pointer-driven)
-   ------------------------------------------------------------------------
-   Interaction model (this is the core of the multi-box change):
-
-     pointerdown on a corner handle of the ALREADY-SELECTED box  -> resize
-     pointerdown inside the ALREADY-SELECTED box                 -> move
-     pointerdown inside a DIFFERENT (unselected) box              -> select
-                                                                       it only (no move on this gesture)
-     pointerdown on empty canvas                                  -> start
-                                                                       drawing a brand-new box (appended
-                                                                       to the array, existing boxes kept)
-
-   This guarantees a box only ever moves when it was "intentionally
-   selected" first (a prior tap), never as a side effect of starting a
-   new box or of a stray touch on top of it.
-   ========================================================================= */
-
-function pushUndo(){
-  const rec = currentRecord();
-  if(!rec) return;
-  state.undoStack.push({
-    boxes: rec.boxes.map(b => ({...b})),
-    negative: rec.negative
-  });
-  if(state.undoStack.length > 30) state.undoStack.shift();
+function drawDimOutside(t, rec, box){
+  const p1 = imageToScreen(t, box.x, box.y), p2 = imageToScreen(t, box.x + box.w, box.y + box.h);
+  const ix0 = t.offsetX, iy0 = t.offsetY, ix1 = t.offsetX + rec.working.width * t.scale, iy1 = t.offsetY + rec.working.height * t.scale;
+  ctx.fillStyle = "rgba(0,0,0,0.55)";
+  ctx.fillRect(ix0, iy0, ix1 - ix0, p1.y - iy0);              // above
+  ctx.fillRect(ix0, p2.y, ix1 - ix0, iy1 - p2.y);              // below
+  ctx.fillRect(ix0, p1.y, p1.x - ix0, p2.y - p1.y);            // left
+  ctx.fillRect(p2.x, p1.y, ix1 - p2.x, p2.y - p1.y);           // right
 }
 
-function hitTestCorner(t, box, cx, cy){
-  const p1 = imageToCanvas(t, box.x, box.y);
-  const p2 = imageToCanvas(t, box.x + box.w, box.y + box.h);
-  const corners = {
-    tl:[p1.x,p1.y], tr:[p2.x,p1.y], bl:[p1.x,p2.y], br:[p2.x,p2.y]
-  };
-  for(const key in corners){
-    const [hx,hy] = corners[key];
-    if(Math.hypot(cx-hx, cy-hy) <= HANDLE_HIT_RADIUS) return key;
+function drawBox(t, box, index, selected, fillAlpha){
+  const p1 = imageToScreen(t, box.x, box.y), p2 = imageToScreen(t, box.x + box.w, box.y + box.h);
+  const w = p2.x - p1.x, h = p2.y - p1.y;
+  const color = selected ? "#ffcf5c" : "#5ee3c1";
+  ctx.save();
+  ctx.strokeStyle = color; ctx.lineWidth = selected ? 3 : 2;
+  ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = selected ? 5 : 2;
+  ctx.strokeRect(p1.x, p1.y, w, h);
+  ctx.fillStyle = selected ? "rgba(255,207,92," + fillAlpha + ")" : "rgba(94,227,193," + fillAlpha + ")";
+  ctx.fillRect(p1.x, p1.y, w, h);
+
+  ctx.shadowBlur = 0; ctx.font = "700 12px monospace";
+  const label = String(index + 1);
+  const labelW = ctx.measureText(label).width + 14, labelY = Math.max(0, p1.y - 20);
+  ctx.fillStyle = color; ctx.fillRect(p1.x, labelY, labelW, 20);
+  ctx.fillStyle = selected ? "#1a1400" : "#0a1512"; ctx.fillText(label, p1.x + 7, labelY + 14.5);
+
+  if(selected){
+    const corners = [[p1.x,p1.y],[p2.x,p1.y],[p1.x,p2.y],[p2.x,p2.y]];
+    ctx.shadowBlur = 3; ctx.shadowColor = "rgba(0,0,0,0.7)";
+    corners.forEach(([cx,cy]) => { ctx.beginPath(); ctx.arc(cx, cy, HANDLE_DRAW_RADIUS, 0, Math.PI*2); ctx.fillStyle = color; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = "#1a1400"; ctx.stroke(); });
+    // edge midpoint handles
+    const mids = [[(p1.x+p2.x)/2,p1.y],[(p1.x+p2.x)/2,p2.y],[p1.x,(p1.y+p2.y)/2],[p2.x,(p1.y+p2.y)/2]];
+    mids.forEach(([mx,my]) => { ctx.beginPath(); ctx.arc(mx, my, HANDLE_DRAW_RADIUS*0.7, 0, Math.PI*2); ctx.fillStyle = color; ctx.globalAlpha = 0.8; ctx.fill(); ctx.globalAlpha = 1; ctx.lineWidth=1.5; ctx.strokeStyle="#1a1400"; ctx.stroke(); });
   }
+  ctx.restore();
+}
+
+function drawCropOverlay(t, rec){
+  const r = state.cropRect; if(!r) return;
+  const p1 = imageToScreen(t, r.x, r.y), p2 = imageToScreen(t, r.x + r.w, r.y + r.h);
+  const ix0 = t.offsetX, iy0 = t.offsetY, ix1 = t.offsetX + rec.working.width * t.scale, iy1 = t.offsetY + rec.working.height * t.scale;
+  ctx.save();
+  ctx.fillStyle = "rgba(0,0,0,0.6)";
+  ctx.fillRect(ix0, iy0, ix1-ix0, p1.y-iy0);
+  ctx.fillRect(ix0, p2.y, ix1-ix0, iy1-p2.y);
+  ctx.fillRect(ix0, p1.y, p1.x-ix0, p2.y-p1.y);
+  ctx.fillRect(p2.x, p1.y, ix1-p2.x, p2.y-p1.y);
+  ctx.strokeStyle = "#5ee3c1"; ctx.lineWidth = 2.5; ctx.setLineDash([6,4]);
+  ctx.strokeRect(p1.x, p1.y, p2.x-p1.x, p2.y-p1.y);
+  ctx.setLineDash([]);
+  const corners = [[p1.x,p1.y],[p2.x,p1.y],[p1.x,p2.y],[p2.x,p2.y]];
+  corners.forEach(([cx,cy]) => { ctx.beginPath(); ctx.arc(cx, cy, HANDLE_DRAW_RADIUS, 0, Math.PI*2); ctx.fillStyle = "#5ee3c1"; ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle="#0a1512"; ctx.stroke(); });
+  const mids = [[(p1.x+p2.x)/2,p1.y],[(p1.x+p2.x)/2,p2.y],[p1.x,(p1.y+p2.y)/2],[p2.x,(p1.y+p2.y)/2]];
+  mids.forEach(([mx,my]) => { ctx.beginPath(); ctx.arc(mx, my, HANDLE_DRAW_RADIUS*0.7, 0, Math.PI*2); ctx.fillStyle = "#5ee3c1"; ctx.globalAlpha = 0.8; ctx.fill(); ctx.globalAlpha = 1; ctx.lineWidth=1.5; ctx.strokeStyle="#0a1512"; ctx.stroke(); });
+  ctx.restore();
+}
+
+/* =========================================================================
+   UNDO / REDO — unified for box edits AND prep operations
+   ========================================================================= */
+function snapshotOf(rec){
+  return { boxes: rec.boxes.map(b => ({...b})), negative: rec.negative, working: rec.working, prepHistory: rec.prepHistory.slice() };
+}
+function pushUndo(){
+  const rec = currentRecord(); if(!rec) return;
+  state.undoStack.push(snapshotOf(rec));
+  state.redoStack = [];
+  if(state.undoStack.length > 25) state.undoStack.shift();
+}
+function applySnapshot(rec, snap){
+  rec.boxes = snap.boxes.map(b => ({...b}));
+  rec.negative = snap.negative; rec.working = snap.working; rec.prepHistory = snap.prepHistory.slice();
+  rec.annotated = rec.boxes.length > 0 || rec.negative;
+  state.selectedIndex = -1;
+  resizeCanvasToViewer(); render(); refreshNavUI(); refreshMetadataPanel(); refreshBoxList(); scheduleAutosave();
+}
+function undo(){
+  const rec = currentRecord();
+  if(!rec || !state.undoStack.length){ toastMsg("Nothing to undo"); return; }
+  state.redoStack.push(snapshotOf(rec));
+  applySnapshot(rec, state.undoStack.pop());
+}
+function redo(){
+  const rec = currentRecord();
+  if(!rec || !state.redoStack.length){ toastMsg("Nothing to redo"); return; }
+  state.undoStack.push(snapshotOf(rec));
+  applySnapshot(rec, state.redoStack.pop());
+}
+
+/* =========================================================================
+   HIT TESTING
+   ========================================================================= */
+function hitTestCorner(t, box, cx, cy){
+  const p1 = imageToScreen(t, box.x, box.y), p2 = imageToScreen(t, box.x + box.w, box.y + box.h);
+  const corners = { tl:[p1.x,p1.y], tr:[p2.x,p1.y], bl:[p1.x,p2.y], br:[p2.x,p2.y] };
+  for(const k in corners){ const [hx,hy] = corners[k]; if(Math.hypot(cx-hx, cy-hy) <= HANDLE_HIT_RADIUS) return k; }
   return null;
 }
-
+function hitTestEdge(t, box, cx, cy){
+  const p1 = imageToScreen(t, box.x, box.y), p2 = imageToScreen(t, box.x + box.w, box.y + box.h);
+  const mids = { top:[(p1.x+p2.x)/2,p1.y], bottom:[(p1.x+p2.x)/2,p2.y], left:[p1.x,(p1.y+p2.y)/2], right:[p2.x,(p1.y+p2.y)/2] };
+  for(const k in mids){ const [hx,hy] = mids[k]; if(Math.hypot(cx-hx, cy-hy) <= EDGE_HIT_WIDTH) return k; }
+  return null;
+}
 function hitTestInside(t, box, cx, cy){
-  const p1 = imageToCanvas(t, box.x, box.y);
-  const p2 = imageToCanvas(t, box.x + box.w, box.y + box.h);
+  const p1 = imageToScreen(t, box.x, box.y), p2 = imageToScreen(t, box.x + box.w, box.y + box.h);
   return cx >= p1.x && cx <= p2.x && cy >= p1.y && cy <= p2.y;
 }
-
-// Finds the topmost (last-drawn / highest index) box under a point, or -1.
 function hitTestAnyBox(rec, t, cx, cy){
-  for(let i = rec.boxes.length - 1; i >= 0; i--){
-    if(hitTestInside(t, rec.boxes[i], cx, cy)) return i;
-  }
+  for(let i = rec.boxes.length - 1; i >= 0; i--) if(hitTestInside(t, rec.boxes[i], cx, cy)) return i;
   return -1;
 }
 
+/* =========================================================================
+   POINTER EVENTS — single finger annotates/crops, two fingers pinch-zoom/pan
+   ========================================================================= */
 canvas.addEventListener("pointerdown", onPointerDown);
 canvas.addEventListener("pointermove", onPointerMove);
 canvas.addEventListener("pointerup", onPointerUp);
 canvas.addEventListener("pointercancel", onPointerUp);
 
 function onPointerDown(evt){
-  const rec = currentRecord();
-  if(!rec || !rec.img || rec.negative) return;
+  const rec = currentRecord(); if(!rec || !rec.working) return;
   evt.preventDefault();
   canvas.setPointerCapture(evt.pointerId);
+  const p = getPointerPos(evt);
+  state.pointers.set(evt.pointerId, p);
+
+  if(state.pointers.size >= 2){
+    finalizeActiveDrag();
+    const pts = Array.from(state.pointers.values());
+    state.pinch = {
+      startDist: Math.hypot(pts[0].x-pts[1].x, pts[0].y-pts[1].y) || 1,
+      startZoom: state.view.zoom, startPanX: state.view.panX, startPanY: state.view.panY,
+      startMidX: (pts[0].x+pts[1].x)/2, startMidY: (pts[0].y+pts[1].y)/2
+    };
+    state.drag = null;
+    return;
+  }
+
+  if(state.mode === "crop"){ onCropPointerDown(rec, p); return; }
+  if(rec.negative) return;
 
   const cssW = viewerWrap.clientWidth, cssH = viewerWrap.clientHeight;
-  const t = getFitTransform(rec, cssW, cssH);
-  const p = getPointerPos(evt);
+  const t = getEffectiveTransform(rec, cssW, cssH);
 
-  // 1. Resize/move only apply to the box that's ALREADY selected.
   if(state.selectedIndex >= 0 && rec.boxes[state.selectedIndex]){
     const selBox = rec.boxes[state.selectedIndex];
-
     const corner = hitTestCorner(t, selBox, p.x, p.y);
-    if(corner){
-      pushUndo();
-      state.drag = { mode:"resize", corner, t, index: state.selectedIndex };
-      return;
-    }
+    if(corner){ pushUndo(); state.drag = { mode:"resize", corner, t, index: state.selectedIndex }; return; }
+    const edge = hitTestEdge(t, selBox, p.x, p.y);
+    if(edge){ pushUndo(); state.drag = { mode:"resize-edge", edge, t, index: state.selectedIndex }; return; }
     if(hitTestInside(t, selBox, p.x, p.y)){
       pushUndo();
-      const start = canvasToImage(rec, t, p.x, p.y);
+      const start = screenToImage(rec, t, p.x, p.y);
       state.drag = { mode:"move", t, startX:start.x, startY:start.y, orig:{...selBox}, index: state.selectedIndex };
       return;
     }
   }
 
-  // 2. Landing inside a DIFFERENT box just selects it — no move on this gesture.
   const hitIdx = hitTestAnyBox(rec, t, p.x, p.y);
   if(hitIdx !== -1){
-    state.selectedIndex = hitIdx;
-    state.drag = null;
-    render();
-    refreshNavUI();
-    toast("Box " + (hitIdx + 1) + " selected");
+    state.selectedIndex = hitIdx; state.drag = null;
+    render(); refreshNavUI(); refreshBoxList();
+    toastMsg("Box " + (hitIdx + 1) + " selected");
     return;
   }
 
-  // 3. Empty space: start drawing a brand-new box. Existing boxes are untouched.
   pushUndo();
-  const start = canvasToImage(rec, t, p.x, p.y);
-  const newBox = { x:start.x, y:start.y, w:0, h:0, classId: CLASS_ID };
-  rec.boxes.push(newBox);
+  const start = screenToImage(rec, t, p.x, p.y);
+  rec.boxes.push({ x:start.x, y:start.y, w:0, h:0, classId: CLASS_ID });
   const newIndex = rec.boxes.length - 1;
   state.selectedIndex = newIndex;
   state.drag = { mode:"create", t, anchorX:start.x, anchorY:start.y, index:newIndex };
 }
 
 function onPointerMove(evt){
+  const p = getPointerPos(evt);
+  if(state.pointers.has(evt.pointerId)) state.pointers.set(evt.pointerId, p);
+
+  if(state.pinch && state.pointers.size >= 2){
+    evt.preventDefault();
+    const pts = Array.from(state.pointers.values());
+    const dist = Math.hypot(pts[0].x-pts[1].x, pts[0].y-pts[1].y) || 1;
+    const mid = { x:(pts[0].x+pts[1].x)/2, y:(pts[0].y+pts[1].y)/2 };
+    state.view.zoom = Math.min(6, Math.max(0.5, state.pinch.startZoom * (dist / state.pinch.startDist)));
+    state.view.panX = state.pinch.startPanX + (mid.x - state.pinch.startMidX);
+    state.view.panY = state.pinch.startPanY + (mid.y - state.pinch.startMidY);
+    render();
+    return;
+  }
+
+  if(state.mode === "crop"){ onCropPointerMove(evt); return; }
   if(!state.drag) return;
   evt.preventDefault();
-  const rec = currentRecord();
-  if(!rec) return;
+  const rec = currentRecord(); if(!rec) return;
   const t = state.drag.t;
-  const p = getPointerPos(evt);
-  const pt = canvasToImage(rec, t, p.x, p.y);
-  const box = rec.boxes[state.drag.index];
-  if(!box) return;
+  const pt = screenToImage(rec, t, p.x, p.y);
+  state.lastPointerImagePt = pt;
+  if(state.coordReadout) updateCoordReadout(pt);
+  const box = rec.boxes[state.drag.index]; if(!box) return;
 
   if(state.drag.mode === "create"){
-    const x1 = Math.min(state.drag.anchorX, pt.x);
-    const y1 = Math.min(state.drag.anchorY, pt.y);
-    const x2 = Math.max(state.drag.anchorX, pt.x);
-    const y2 = Math.max(state.drag.anchorY, pt.y);
+    const x1 = Math.min(state.drag.anchorX, pt.x), y1 = Math.min(state.drag.anchorY, pt.y);
+    const x2 = Math.max(state.drag.anchorX, pt.x), y2 = Math.max(state.drag.anchorY, pt.y);
     rec.boxes[state.drag.index] = { x:x1, y:y1, w:x2-x1, h:y2-y1, classId: box.classId };
-  }
-  else if(state.drag.mode === "move"){
-    const dx = pt.x - state.drag.startX;
-    const dy = pt.y - state.drag.startY;
-    let nx = state.drag.orig.x + dx;
-    let ny = state.drag.orig.y + dy;
-    nx = Math.min(Math.max(nx, 0), rec.naturalWidth - state.drag.orig.w);
-    ny = Math.min(Math.max(ny, 0), rec.naturalHeight - state.drag.orig.h);
+  } else if(state.drag.mode === "move"){
+    let nx = state.drag.orig.x + (pt.x - state.drag.startX), ny = state.drag.orig.y + (pt.y - state.drag.startY);
+    nx = Math.min(Math.max(nx, 0), rec.working.width - state.drag.orig.w);
+    ny = Math.min(Math.max(ny, 0), rec.working.height - state.drag.orig.h);
     rec.boxes[state.drag.index] = { x:nx, y:ny, w:state.drag.orig.w, h:state.drag.orig.h, classId: box.classId };
+  } else if(state.drag.mode === "resize"){
+    updateBoundingBoxCorner(rec, state.drag.index, state.drag.corner, pt);
+  } else if(state.drag.mode === "resize-edge"){
+    updateBoundingBoxEdge(rec, state.drag.index, state.drag.edge, pt);
   }
-  else if(state.drag.mode === "resize"){
-    updateBoundingBox(rec, state.drag.index, state.drag.corner, pt);
-  }
-
   render();
 }
 
 function onPointerUp(evt){
-  if(!state.drag) return;
-  const rec = currentRecord();
-  const dragIndex = state.drag.index;
-  const wasCreate = state.drag.mode === "create";
-  state.drag = null;
-
-  if(rec && rec.boxes[dragIndex]){
-    const box = rec.boxes[dragIndex];
-    // Discard degenerate boxes (accidental tap with no drag) — only relevant
-    // for a freshly-created box; moved/resized boxes are clamped already.
-    if(wasCreate && (box.w < MIN_BOX_PX || box.h < MIN_BOX_PX)){
-      rec.boxes.splice(dragIndex, 1);
-      state.selectedIndex = -1;
-    } else {
-      rec.annotated = true;
-    }
-  }
-  render();
-  refreshNavUI();
+  if(state.pointers.has(evt.pointerId)) state.pointers.delete(evt.pointerId);
+  if(state.pointers.size < 2) state.pinch = null;
+  if(state.mode === "crop"){ onCropPointerUp(); return; }
+  if(state.pointers.size === 0) finalizeActiveDrag();
+  if(state.coordReadout) coordReadoutEl.classList.remove("show");
 }
 
-// Resize: recompute the box at `index` from a fixed opposite corner + the dragged corner's new position
-function updateBoundingBox(rec, index, corner, pt){
+function finalizeActiveDrag(){
+  if(!state.drag) return;
+  const rec = currentRecord();
+  const dragIndex = state.drag.index, wasCreate = state.drag.mode === "create";
+  state.drag = null;
+  if(rec && rec.boxes[dragIndex]){
+    const box = rec.boxes[dragIndex];
+    if(wasCreate && (box.w < MIN_BOX_PX || box.h < MIN_BOX_PX)){ rec.boxes.splice(dragIndex, 1); state.selectedIndex = -1; }
+    else rec.annotated = true;
+  }
+  render(); refreshNavUI(); refreshBoxList(); scheduleAutosave();
+}
+
+function updateBoundingBoxCorner(rec, index, corner, pt){
   const b = rec.boxes[index];
-  let x1 = b.x, y1 = b.y, x2 = b.x + b.w, y2 = b.y + b.h;
+  let x1=b.x, y1=b.y, x2=b.x+b.w, y2=b.y+b.h;
+  if(corner==="tl"){x1=pt.x;y1=pt.y;} else if(corner==="tr"){x2=pt.x;y1=pt.y;} else if(corner==="bl"){x1=pt.x;y2=pt.y;} else if(corner==="br"){x2=pt.x;y2=pt.y;}
+  const nx1=Math.min(x1,x2), nx2=Math.max(x1,x2), ny1=Math.min(y1,y2), ny2=Math.max(y1,y2);
+  rec.boxes[index] = { x:nx1, y:ny1, w:nx2-nx1, h:ny2-ny1, classId:b.classId };
+}
+function updateBoundingBoxEdge(rec, index, edge, pt){
+  const b = rec.boxes[index];
+  let x1=b.x, y1=b.y, x2=b.x+b.w, y2=b.y+b.h;
+  if(edge==="top") y1 = Math.min(pt.y, y2 - MIN_BOX_PX);
+  else if(edge==="bottom") y2 = Math.max(pt.y, y1 + MIN_BOX_PX);
+  else if(edge==="left") x1 = Math.min(pt.x, x2 - MIN_BOX_PX);
+  else if(edge==="right") x2 = Math.max(pt.x, x1 + MIN_BOX_PX);
+  rec.boxes[index] = { x:Math.min(x1,x2), y:Math.min(y1,y2), w:Math.abs(x2-x1), h:Math.abs(y2-y1), classId:b.classId };
+}
 
-  if(corner === "tl"){ x1 = pt.x; y1 = pt.y; }
-  else if(corner === "tr"){ x2 = pt.x; y1 = pt.y; }
-  else if(corner === "bl"){ x1 = pt.x; y2 = pt.y; }
-  else if(corner === "br"){ x2 = pt.x; y2 = pt.y; }
-
-  const nx1 = Math.min(x1, x2), nx2 = Math.max(x1, x2);
-  const ny1 = Math.min(y1, y2), ny2 = Math.max(y1, y2);
-
-  rec.boxes[index] = { x:nx1, y:ny1, w:nx2-nx1, h:ny2-ny1, classId: b.classId };
+function updateCoordReadout(pt){
+  coordReadoutEl.textContent = Math.round(pt.x) + ", " + Math.round(pt.y);
+  coordReadoutEl.classList.add("show");
 }
 
 /* =========================================================================
-   5. DELETE SELECTED BOX / CLEAR ALL BOXES
+   CROP MODE
+   ------------------------------------------------------------------------
+   Invariant this section exists to guarantee: state.cropRect always
+   satisfies  0 <= x, 0 <= y, x + w <= iw, y + h <= ih  — for every mutation
+   path (move, corner-resize, edge-resize, aspect-ratio switch, and the
+   final applyCrop() rasterization). getCropAspectRatio()/clampCropRectToBounds()
+   are the single source of truth for that; every crop mutation below routes
+   its result through clampCropRectToBounds() rather than clamping ad hoc.
+   ========================================================================= */
+function getCropAspectRatio(){
+  if(!state.cropAspect || state.cropAspect === "free") return null;
+  const [aw, ah] = state.cropAspect.split(":").map(Number);
+  return aw / ah;
+}
+
+// Clamps a candidate {x,y,w,h} so it fits entirely within [0,iw] x [0,ih].
+// If aspectRatio is given, w/h are assumed to already match it (they always
+// do at every call site below) and are scaled DOWN TOGETHER — uniformly, so
+// the ratio is preserved exactly — only if either dimension overflows.
+// Position is then clamped so the (possibly-shrunk) rect stays fully inside.
+function clampCropRectToBounds(rect, iw, ih, aspectRatio){
+  let { x, y, w, h } = rect;
+  w = Math.max(2, Math.min(w, iw));
+  h = Math.max(2, Math.min(h, ih));
+  if(aspectRatio){
+    const scale = Math.min(1, iw / w, ih / h);
+    w *= scale; h *= scale;
+  }
+  x = Math.min(Math.max(x, 0), Math.max(0, iw - w));
+  y = Math.min(Math.max(y, 0), Math.max(0, ih - h));
+  return { x, y, w, h };
+}
+
+function defaultCropRect(rec, aspect){
+  const iw = rec.working.width, ih = rec.working.height;
+  if(aspect === "free" || !aspect){ const w = iw*0.8, h = ih*0.8; return { x:(iw-w)/2, y:(ih-h)/2, w, h }; }
+  const [aw, ah] = aspect.split(":").map(Number);
+  const targetRatio = aw/ah, imgRatio = iw/ih;
+  let w, h;
+  if(imgRatio > targetRatio){ h = ih*0.9; w = h*targetRatio; } else { w = iw*0.9; h = w/targetRatio; }
+  return clampCropRectToBounds({ x:(iw-w)/2, y:(ih-h)/2, w, h }, iw, ih, targetRatio);
+}
+
+function enterCropMode(){
+  const rec = currentRecord(); if(!rec || !rec.working) { toastMsg("Import an image first"); return; }
+  state.mode = "crop"; state.cropAspect = "free";
+  state.view = { zoom:1, panX:0, panY:0 };
+  state.cropRect = defaultCropRect(rec, "free");
+  document.querySelectorAll("#cropAspects .chip").forEach(b => b.classList.toggle("active", b.dataset.aspect === "free"));
+  document.getElementById("cropBar").classList.add("show");
+  resizeCanvasToViewer(); render();
+}
+function exitCropMode(){
+  state.mode = "annotate"; state.cropRect = null;
+  document.getElementById("cropBar").classList.remove("show");
+  render(); refreshNavUI();
+}
+function onCropPointerDown(rec, p){
+  const cssW = viewerWrap.clientWidth, cssH = viewerWrap.clientHeight;
+  const t = getEffectiveTransform(rec, cssW, cssH);
+  const r = state.cropRect;
+  const corner = hitTestCorner(t, r, p.x, p.y);
+  if(corner){ state.drag = { mode:"crop-resize", corner, t }; return; }
+  const edge = hitTestEdge(t, r, p.x, p.y);
+  if(edge){ state.drag = { mode:"crop-resize-edge", edge, t }; return; }
+  if(hitTestInside(t, r, p.x, p.y)){
+    const start = screenToImage(rec, t, p.x, p.y);
+    state.drag = { mode:"crop-move", t, startX:start.x, startY:start.y, orig:{...r} };
+  }
+}
+function onCropPointerMove(evt){
+  if(!state.drag) return;
+  const rec = currentRecord(); if(!rec) return;
+  const p = getPointerPos(evt);
+  const t = state.drag.t;
+  const pt = screenToImage(rec, t, p.x, p.y);
+  const iw = rec.working.width, ih = rec.working.height;
+  const ratio = getCropAspectRatio();
+
+  if(state.drag.mode === "crop-move"){
+    let nx = state.drag.orig.x + (pt.x - state.drag.startX), ny = state.drag.orig.y + (pt.y - state.drag.startY);
+    nx = Math.min(Math.max(nx, 0), iw - state.drag.orig.w);
+    ny = Math.min(Math.max(ny, 0), ih - state.drag.orig.h);
+    state.cropRect = clampCropRectToBounds({ x:nx, y:ny, w:state.drag.orig.w, h:state.drag.orig.h }, iw, ih, ratio);
+
+  } else if(state.drag.mode === "crop-resize"){
+    const r = state.cropRect;
+    let x1=r.x, y1=r.y, x2=r.x+r.w, y2=r.y+r.h;
+    const c = state.drag.corner;
+    if(c==="tl"){x1=pt.x;y1=pt.y;} else if(c==="tr"){x2=pt.x;y1=pt.y;} else if(c==="bl"){x1=pt.x;y2=pt.y;} else if(c==="br"){x2=pt.x;y2=pt.y;}
+    let w = Math.abs(x2-x1), h = Math.abs(y2-y1);
+    let nx = Math.min(x1,x2), ny = Math.min(y1,y2);
+    if(ratio){
+      // Re-derive height from the (already boundary-clamped) width so the
+      // ratio holds exactly, then re-anchor the corner that must stay fixed.
+      h = w / ratio;
+      if(c==="tl") ny = y2-h; else if(c==="tr") ny = y2-h; else { /* bl/br */ ny = y1; }
+    }
+    state.cropRect = clampCropRectToBounds({ x:nx, y:ny, w, h }, iw, ih, ratio);
+
+  } else if(state.drag.mode === "crop-resize-edge"){
+    const r = state.cropRect;
+    let x1=r.x, y1=r.y, x2=r.x+r.w, y2=r.y+r.h;
+    const e = state.drag.edge;
+    if(e==="top") y1 = pt.y; else if(e==="bottom") y2 = pt.y; else if(e==="left") x1 = pt.x; else if(e==="right") x2 = pt.x;
+    let w = Math.abs(x2-x1), h = Math.abs(y2-y1);
+    let nx = Math.min(x1,x2), ny = Math.min(y1,y2);
+    if(ratio){
+      // Dragging one edge under a locked ratio: derive the perpendicular
+      // dimension from this edge's new size, keeping the rect's center on
+      // the OTHER axis fixed (a plain, predictable convention for edges,
+      // which — unlike corners — have no natural anchor point).
+      const centerX = r.x + r.w/2, centerY = r.y + r.h/2;
+      if(e==="top" || e==="bottom"){ w = h * ratio; nx = centerX - w/2; }
+      else { h = w / ratio; ny = centerY - h/2; }
+    }
+    state.cropRect = clampCropRectToBounds({ x:nx, y:ny, w, h }, iw, ih, ratio);
+  }
+  render();
+}
+function onCropPointerUp(){ state.drag = null; }
+
+function confirmCrop(){
+  const rec = currentRecord(); if(!rec || !state.cropRect) return;
+  const r = clampCropRectToBounds(state.cropRect, rec.working.width, rec.working.height, getCropAspectRatio());
+  if(r.w < 8 || r.h < 8){ toastMsg("Crop area too small"); return; }
+  applyCrop(rec, r);
+  exitCropMode();
+  resizeCanvasToViewer(); render(); refreshNavUI(); refreshMetadataPanel(); refreshBoxList(); scheduleAutosave();
+  toastMsg("Crop applied — " + rec.working.width + "×" + rec.working.height);
+}
+
+/* =========================================================================
+   RESIZE SHEET
+   ========================================================================= */
+let resizeMode = "letterbox";
+const resizeHints = {
+  letterbox: "Fit + Letterbox: scales the image to fit inside the target size, preserving aspect ratio, and pads the rest with black. No distortion, no cropping.",
+  stretch: "Stretch: scales width and height independently to exactly match the target size. This WILL distort the image if the aspect ratio differs.",
+  "crop-fit": "Crop to Fit: center-crops the image to the target aspect ratio first, then scales to the exact target size. No distortion, no padding — but content near the edges may be cut off."
+};
+function openResizeSheet(){
+  const rec = currentRecord(); if(!rec || !rec.working){ toastMsg("Import an image first"); return; }
+  document.getElementById("resizeWInput").value = rec.working.width;
+  document.getElementById("resizeHInput").value = rec.working.height;
+  toggleSheet("resizeSheet", true);
+}
+function applyResizeFromSheet(){
+  const rec = currentRecord(); if(!rec) return;
+  const w = Math.round(Number(document.getElementById("resizeWInput").value));
+  const h = Math.round(Number(document.getElementById("resizeHInput").value));
+  if(!w || !h || w < 1 || h < 1){ toastMsg("Enter a valid width and height"); return; }
+  applyResize(rec, w, h, resizeMode);
+  toggleSheet("resizeSheet", false);
+  resizeCanvasToViewer(); render(); refreshNavUI(); refreshMetadataPanel(); refreshBoxList(); scheduleAutosave();
+  toastMsg("Resized to " + w + "×" + h);
+}
+
+/* =========================================================================
+   BOX ACTIONS: delete selected / clear all / duplicate / toggle negative / save
    ========================================================================= */
 function deleteSelectedBox(){
-  const rec = currentRecord();
-  if(!rec) return;
-  if(state.selectedIndex < 0 || !rec.boxes[state.selectedIndex]){
-    toast("No box selected — tap a box first");
-    return;
-  }
+  const rec = currentRecord(); if(!rec) return;
+  if(state.selectedIndex < 0 || !rec.boxes[state.selectedIndex]){ toastMsg("No box selected — tap a box first"); return; }
   pushUndo();
   rec.boxes.splice(state.selectedIndex, 1);
   state.selectedIndex = -1;
   rec.annotated = rec.boxes.length > 0 || rec.negative;
-  render();
-  refreshNavUI();
-  toast("Box deleted");
+  render(); refreshNavUI(); refreshBoxList(); scheduleAutosave();
+  toastMsg("Box deleted");
 }
-
 function clearAllBoxes(){
-  const rec = currentRecord();
-  if(!rec || rec.boxes.length === 0){
-    toast("No boxes to clear");
-    return;
-  }
+  const rec = currentRecord(); if(!rec || rec.boxes.length === 0){ toastMsg("No boxes to clear"); return; }
   pushUndo();
-  rec.boxes = [];
-  state.selectedIndex = -1;
-  rec.annotated = rec.negative; // stays annotated only if still marked negative
-  render();
-  refreshNavUI();
-  toast("All boxes cleared");
+  rec.boxes = []; state.selectedIndex = -1; rec.annotated = rec.negative;
+  render(); refreshNavUI(); refreshBoxList(); scheduleAutosave();
+  toastMsg("All boxes cleared");
 }
-
-function undo(){
-  const rec = currentRecord();
-  if(!rec || state.undoStack.length === 0){ toast("Nothing to undo"); return; }
-  const prev = state.undoStack.pop();
-  rec.boxes = prev.boxes.map(b => ({...b}));
-  rec.negative = prev.negative;
-  rec.annotated = rec.boxes.length > 0 || rec.negative;
-  state.selectedIndex = -1;
-  render();
-  refreshNavUI();
+function duplicateSelectedBox(){
+  const rec = currentRecord(); if(!rec) return;
+  if(state.selectedIndex < 0 || !rec.boxes[state.selectedIndex]){ toastMsg("No box selected — tap a box first"); return; }
+  pushUndo();
+  const b = rec.boxes[state.selectedIndex];
+  const offset = Math.max(6, Math.min(rec.working.width, rec.working.height) * 0.02);
+  const nb = { x: Math.min(b.x+offset, rec.working.width-b.w), y: Math.min(b.y+offset, rec.working.height-b.h), w:b.w, h:b.h, classId:b.classId };
+  rec.boxes.push(nb);
+  state.selectedIndex = rec.boxes.length - 1;
+  rec.annotated = true;
+  render(); refreshNavUI(); refreshBoxList(); scheduleAutosave();
+  toastMsg("Box duplicated");
 }
-
-/* =========================================================================
-   6/7. SAVE ANNOTATION / "NO OBJECT" (negative sample)
-   ========================================================================= */
-function saveAnnotation(){
-  const rec = currentRecord();
-  if(!rec) return;
-
-  if(rec.negative){
-    rec.annotated = true;
-    toast("Saved: no object");
-  } else if(rec.boxes.length > 0){
-    const valid = rec.boxes.filter(b => b.w >= MIN_BOX_PX && b.h >= MIN_BOX_PX);
-    if(valid.length === 0){
-      toast("Boxes are too small — adjust before saving");
-      return;
-    }
-    rec.annotated = true;
-    toast("Saved " + rec.boxes.length + " box" + (rec.boxes.length === 1 ? "" : "es"));
-  } else {
-    toast("Draw at least one box, or mark 'No Object'");
-    return;
-  }
-  refreshNavUI();
-}
-
-function loadAnnotation(index){
-  // Restoring annotations is implicit: state.images[index] already holds
-  // its boxes/negative/annotated fields in memory. This function exists as
-  // a named hook (called conceptually from showImage's render path) for
-  // clarity/extension, e.g. if annotations were ever loaded from disk.
-  return state.images[index];
-}
-
 function toggleNoObject(){
-  const rec = currentRecord();
-  if(!rec) return;
+  const rec = currentRecord(); if(!rec) return;
   pushUndo();
   rec.negative = !rec.negative;
-  if(rec.negative){
-    rec.boxes = [];
-    state.selectedIndex = -1;
+  if(rec.negative){ rec.boxes = []; state.selectedIndex = -1; rec.annotated = true; } else { rec.annotated = rec.boxes.length > 0; }
+  render(); refreshNavUI(); refreshBoxList(); scheduleAutosave();
+}
+function saveAnnotation(){
+  const rec = currentRecord(); if(!rec) return;
+  if(rec.negative){ rec.annotated = true; toastMsg("Saved: no object"); }
+  else if(rec.boxes.length > 0){
+    const valid = rec.boxes.filter(b => b.w >= MIN_BOX_PX && b.h >= MIN_BOX_PX);
+    if(valid.length === 0){ toastMsg("Boxes are too small — adjust before saving"); return; }
     rec.annotated = true;
-  } else {
-    rec.annotated = rec.boxes.length > 0;
-  }
-  render();
-  refreshNavUI();
+    toastMsg("Saved " + rec.boxes.length + " box" + (rec.boxes.length === 1 ? "" : "es"));
+  } else { toastMsg("Draw at least one box, or mark 'No Object'"); return; }
+  refreshNavUI(); scheduleAutosave();
 }
 
 /* =========================================================================
-   VALIDATION  (used before export)
+   BOX LIST PANEL
+   ========================================================================= */
+function refreshBoxList(){
+  const wrap = document.getElementById("boxListWrap");
+  const rec = currentRecord();
+  wrap.innerHTML = "";
+  if(!rec || rec.boxes.length === 0){ wrap.innerHTML = '<small class="hint">No boxes on this image yet.</small>'; return; }
+  rec.boxes.forEach((b, i) => {
+    const row = document.createElement("div");
+    row.className = "boxListItem" + (i === state.selectedIndex ? " selected" : "");
+    row.innerHTML = '<span>Box ' + (i+1) + ' — ' + Math.round(b.w) + '×' + Math.round(b.h) + 'px</span>';
+    const selectBtn = document.createElement("button"); selectBtn.textContent = "Select";
+    selectBtn.addEventListener("click", () => { state.selectedIndex = i; render(); refreshNavUI(); refreshBoxList(); });
+    const delBtn = document.createElement("button"); delBtn.className = "danger"; delBtn.textContent = "✕";
+    delBtn.addEventListener("click", () => { pushUndo(); rec.boxes.splice(i,1); if(state.selectedIndex===i) state.selectedIndex=-1; rec.annotated = rec.boxes.length>0||rec.negative; render(); refreshNavUI(); refreshBoxList(); scheduleAutosave(); });
+    row.appendChild(selectBtn); row.appendChild(delBtn);
+    wrap.appendChild(row);
+  });
+}
+
+/* =========================================================================
+   METADATA PANEL
+   ========================================================================= */
+function refreshMetadataPanel(){
+  const rec = currentRecord();
+  document.getElementById("metaFilename").textContent = rec ? rec.id : "—";
+  document.getElementById("metaOriginal").textContent = rec ? rec.originalWidth + " × " + rec.originalHeight : "—";
+  document.getElementById("metaPrepared").textContent = rec && rec.working ? rec.working.width + " × " + rec.working.height + (rec.working.kind === "original" ? " (= original)" : "") : "—";
+  document.getElementById("metaObjects").textContent = rec ? rec.boxes.length : "—";
+  document.getElementById("metaStatus").textContent = rec ? (rec.negative ? "No object" : (rec.annotated ? "Annotated" : "Not annotated")) : "—";
+}
+
+/* =========================================================================
+   VALIDATION
+   ========================================================================= */
+function validateImage(rec){
+  const warnings = [];
+  if(!rec.negative && rec.boxes.length === 0 && !rec.annotated) warnings.push("missing annotation");
+  if(!rec.working) return warnings; // never opened yet — no boxes possible, nothing further to check
+  rec.boxes.forEach((b, i) => {
+    if(b.w <= 0 || b.h <= 0){ warnings.push("box " + (i+1) + ": zero/negative size"); return; }
+    if(b.x < 0 || b.y < 0 || b.x + b.w > rec.working.width || b.y + b.h > rec.working.height) warnings.push("box " + (i+1) + ": outside image bounds");
+    const area = (b.w * b.h) / (rec.working.width * rec.working.height);
+    if(area < TINY_AREA_FRACTION) warnings.push("box " + (i+1) + ": suspiciously tiny (" + (area*100).toFixed(3) + "% of image)");
+    if(b.x <= EDGE_TOUCH_PX || b.y <= EDGE_TOUCH_PX || (rec.working.width - (b.x+b.w)) <= EDGE_TOUCH_PX || (rec.working.height - (b.y+b.h)) <= EDGE_TOUCH_PX)
+      warnings.push("box " + (i+1) + ": touches image edge");
+    if(b.classId !== CLASS_ID) warnings.push("box " + (i+1) + ": unexpected class id " + b.classId);
+  });
+  return warnings;
+}
+function runValidation(){
+  const body = document.getElementById("validateBody");
+  body.innerHTML = "";
+  let flagged = 0;
+  state.images.forEach((rec, idx) => {
+    const warnings = validateImage(rec);
+    if(warnings.length === 0) return;
+    flagged++;
+    const row = document.createElement("div");
+    row.className = "warnRow";
+    row.innerHTML = "<span>#" + (idx+1) + " " + escapeHtml(rec.id) + " — " + escapeHtml(warnings.join("; ")) + "</span>";
+    const btn = document.createElement("button"); btn.textContent = "Review";
+    btn.addEventListener("click", () => { toggleSheet("validateSheet", false); toggleSheet("toolsSheet", false); showImage(idx); });
+    row.appendChild(btn);
+    body.appendChild(row);
+  });
+  if(flagged === 0) body.innerHTML = '<small class="hint">No issues found. All annotations look valid.</small>';
+  else body.insertAdjacentHTML("afterbegin", "<div style=\"font-weight:600; font-size:13px;\">⚠ " + flagged + " image(s) contain suspicious annotations</div>");
+  toggleSheet("validateSheet", true);
+}
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+
+/* =========================================================================
+   STATISTICS
+   ========================================================================= */
+function showStatistics(){
+  const body = document.getElementById("statsBody");
+  const total = state.images.length;
+  const annotated = state.images.filter(r => r.annotated).length;
+  const negative = state.images.filter(r => r.negative).length;
+  const withBoxes = state.images.filter(r => r.boxes.length > 0);
+  const totalObjects = withBoxes.reduce((s,r) => s + r.boxes.length, 0);
+  const counts = withBoxes.map(r => r.boxes.length);
+  const avgObjects = counts.length ? (totalObjects / counts.length).toFixed(2) : "0";
+  const minObjects = counts.length ? Math.min(...counts) : 0;
+  const maxObjects = counts.length ? Math.max(...counts) : 0;
+
+  const resMap = new Map();
+  state.images.forEach(r => { if(r.working){ const key = r.working.width + "×" + r.working.height; resMap.set(key, (resMap.get(key)||0)+1); } });
+
+  const areas = [];
+  withBoxes.forEach(r => r.boxes.forEach(b => areas.push((b.w*b.h)/(r.working.width*r.working.height))));
+  const areaStats = areas.length ? {
+    min: (Math.min(...areas)*100).toFixed(2), max: (Math.max(...areas)*100).toFixed(2),
+    avg: (areas.reduce((a,b)=>a+b,0)/areas.length*100).toFixed(2)
+  } : null;
+
+  let html = "";
+  html += kvRow("Total images", total);
+  html += kvRow("Annotated images", annotated);
+  html += kvRow("Negative (no object) images", negative);
+  html += kvRow("Total objects", totalObjects);
+  html += kvRow("Avg objects / image", avgObjects);
+  html += kvRow("Min objects / image", minObjects);
+  html += kvRow("Max objects / image", maxObjects);
+  html += "<div style=\"font-size:12px; color:var(--text-dim); margin-top:8px;\">Image resolutions</div>";
+  if(resMap.size === 0) html += '<small class="hint">No images loaded yet.</small>';
+  else Array.from(resMap.entries()).slice(0,12).forEach(([k,v]) => { html += kvRow(k, v + " image" + (v===1?"":"s")); });
+  html += "<div style=\"font-size:12px; color:var(--text-dim); margin-top:8px;\">Bounding-box size (% of image area)</div>";
+  html += areaStats ? (kvRow("Min", areaStats.min + "%") + kvRow("Avg", areaStats.avg + "%") + kvRow("Max", areaStats.max + "%")) : '<small class="hint">No boxes drawn yet.</small>';
+
+  body.innerHTML = html;
+  toggleSheet("statsSheet", true);
+}
+function kvRow(k,v){ return '<div class="kv"><span>'+escapeHtml(String(k))+'</span><b>'+escapeHtml(String(v))+'</b></div>'; }
+
+/* =========================================================================
+   FILTER / JUMP
+   ========================================================================= */
+function recomputeFilter(){
+  if(state.filter === "all"){ state.filteredIndices = []; return; }
+  state.filteredIndices = state.images.map((r,i)=>i).filter(i => {
+    const r = state.images[i];
+    if(state.filter === "annotated") return r.annotated && !r.negative;
+    if(state.filter === "unannotated") return !r.annotated && !r.negative;
+    if(state.filter === "negative") return r.negative;
+    if(state.filter === "review") return r.working ? validateImage(r).length > 0 : false;
+    return true;
+  });
+}
+function setFilter(f){
+  state.filter = f;
+  document.querySelectorAll("#filterChips .chip").forEach(b => b.classList.toggle("active", b.dataset.filter === f));
+  recomputeFilter();
+  toastMsg(f === "all" ? "Showing all images" : "Filtered: " + f + " (" + state.filteredIndices.length + " images)");
+}
+
+/* =========================================================================
+   YOLO / COCO / VOC EXPORTERS
    ========================================================================= */
 function convertToYolo(rec, box){
-  // Converts a single box (original image pixel coords, top-left x/y + w/h)
-  // into one normalized YOLO line: "class_id x_center y_center width height"
-  if(!box) return null;
-  const iw = rec.naturalWidth, ih = rec.naturalHeight;
-
+  const iw = rec.working.width, ih = rec.working.height;
   let { x, y, w, h } = box;
-
-  // Clamp to image bounds defensively
-  x = Math.min(Math.max(x, 0), iw);
-  y = Math.min(Math.max(y, 0), ih);
-  w = Math.min(Math.max(w, 0), iw - x);
-  h = Math.min(Math.max(h, 0), ih - y);
-
-  if(w <= 0 || h <= 0) return null; // reject zero/negative-size boxes
-
-  const xCenter = (x + w / 2) / iw;
-  const yCenter = (y + h / 2) / ih;
-  const nWidth = w / iw;
-  const nHeight = h / ih;
-
+  x = Math.min(Math.max(x, 0), iw); y = Math.min(Math.max(y, 0), ih);
+  w = Math.min(Math.max(w, 0), iw - x); h = Math.min(Math.max(h, 0), ih - y);
+  if(w <= 0 || h <= 0) return null;
   const clamp01 = v => Math.min(Math.max(v, 0), 1);
+  return [box.classId != null ? box.classId : CLASS_ID,
+    clamp01((x+w/2)/iw).toFixed(6), clamp01((y+h/2)/ih).toFixed(6), clamp01(w/iw).toFixed(6), clamp01(h/ih).toFixed(6)].join(" ");
+}
+function buildCocoDataset(images, baseNames){
+  // Note: COCO conventionally 1-indexes category ids; we keep 0 here to stay
+  // consistent with this project's YOLO class_id (single class: "object").
+  const coco = { images: [], annotations: [], categories: [{ id: CLASS_ID, name: CLASS_NAME }] };
+  let annId = 1;
+  images.forEach((rec, i) => {
+    const imgId = i + 1;
+    coco.images.push({ id: imgId, file_name: baseNames[i], width: rec.working.width, height: rec.working.height });
+    if(rec.negative) return;
+    rec.boxes.forEach(b => {
+      if(b.w <= 0 || b.h <= 0) return;
+      coco.annotations.push({ id: annId++, image_id: imgId, category_id: b.classId != null ? b.classId : CLASS_ID,
+        bbox: [round2(b.x), round2(b.y), round2(b.w), round2(b.h)], area: round2(b.w*b.h), iscrowd: 0 });
+    });
+  });
+  return JSON.stringify(coco, null, 2);
+}
+function buildVocXml(rec, baseName, ext){
+  const objects = rec.negative ? [] : rec.boxes.filter(b => b.w>0 && b.h>0);
+  const objXml = objects.map(b => (
+    "  <object>\n    <name>" + CLASS_NAME + "</name>\n    <pose>Unspecified</pose>\n    <truncated>0</truncated>\n    <difficult>0</difficult>\n" +
+    "    <bndbox>\n      <xmin>" + Math.round(b.x) + "</xmin>\n      <ymin>" + Math.round(b.y) + "</ymin>\n" +
+    "      <xmax>" + Math.round(b.x+b.w) + "</xmax>\n      <ymax>" + Math.round(b.y+b.h) + "</ymax>\n    </bndbox>\n  </object>"
+  )).join("\n");
+  return "<annotation>\n  <filename>" + baseName + ext + "</filename>\n  <size>\n    <width>" + rec.working.width +
+    "</width>\n    <height>" + rec.working.height + "</height>\n    <depth>3</depth>\n  </size>\n" + objXml + "\n</annotation>\n";
+}
+function round2(n){ return Math.round(n*100)/100; }
 
-  return [
-    box.classId != null ? box.classId : CLASS_ID,
-    clamp01(xCenter).toFixed(6),
-    clamp01(yCenter).toFixed(6),
-    clamp01(nWidth).toFixed(6),
-    clamp01(nHeight).toFixed(6)
-  ].join(" ");
+/* =========================================================================
+   TRAIN / VAL / TEST SPLIT — deterministic seeded shuffle
+   ========================================================================= */
+function mulberry32(seed){
+  return function(){
+    seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function computeSplit(count, trainPct, valPct, testPct, seed){
+  const rand = mulberry32(seed);
+  const order = Array.from({length: count}, (_, i) => i);
+  for(let i = order.length - 1; i > 0; i--){ const j = Math.floor(rand() * (i+1)); [order[i], order[j]] = [order[j], order[i]]; }
+  const nTrain = Math.round(count * trainPct / 100);
+  const nVal = Math.round(count * valPct / 100);
+  const nTest = count - nTrain - nVal; // remainder absorbs rounding, guarantees every image gets exactly one split
+  const assign = new Array(count);
+  order.forEach((imgIdx, pos) => { assign[imgIdx] = pos < nTrain ? "train" : (pos < nTrain+nVal ? "val" : "test"); });
+  return { assign, counts: { train: nTrain, val: nVal, test: Math.max(0,nTest) } };
 }
 
 /* =========================================================================
-   8. EXPORT DATASET (.zip)  — one YOLO line PER BOX, in the order they were drawn
+   EXPORT SHEET + DATASET EXPORT
    ========================================================================= */
-async function exportDataset(){
-  if(state.images.length === 0){
-    toast("Nothing to export yet");
-    return;
-  }
+let exportSeed = 1;
+function openExportSheet(){
+  if(state.images.length === 0){ toastMsg("Nothing to export yet"); return; }
+  exportSeed = Date.now() & 0xffffffff;
+  const total = state.images.length, annotated = state.images.filter(r=>r.annotated).length;
+  const negative = state.images.filter(r=>r.negative).length;
+  const objects = state.images.reduce((s,r)=>s+(r.negative?0:r.boxes.length),0);
+  document.getElementById("exportStats").innerHTML =
+    kvRow("Images", total) + kvRow("Annotated", annotated) + kvRow("Negative", negative) + kvRow("Objects", objects);
 
-  const unannotated = state.images.filter(r => !r.annotated).length;
+  const unannotated = total - annotated;
+  const warnEl = document.getElementById("exportWarning");
   if(unannotated > 0){
-    const proceed = confirm(
-      unannotated + " image(s) have no saved annotation yet (no boxes and not " +
-      "marked 'No Object'). They will be exported with an EMPTY label file.\n\nContinue export?"
-    );
-    if(!proceed) return;
+    warnEl.style.display = "flex";
+    warnEl.innerHTML = "<span>" + unannotated + " image(s) have no saved annotation — they'll export with an empty label file.</span>";
+  } else warnEl.style.display = "none";
+
+  updateSplitPreview();
+  toggleSheet("exportSheet", true);
+}
+function updateSplitPreview(){
+  const enabled = document.getElementById("splitEnableCheck").checked;
+  document.getElementById("splitInputsRow").style.display = enabled ? "flex" : "none";
+  const previewEl = document.getElementById("splitPreview");
+  if(!enabled){ previewEl.style.display = "none"; return; }
+  const tp = Number(document.getElementById("splitTrainInput").value)||0;
+  const vp = Number(document.getElementById("splitValInput").value)||0;
+  const sp = Number(document.getElementById("splitTestInput").value)||0;
+  if(tp+vp+sp !== 100){ previewEl.style.display="block"; previewEl.textContent = "Percentages must sum to 100 (currently " + (tp+vp+sp) + ")"; return; }
+  const { counts } = computeSplit(state.images.length, tp, vp, sp, exportSeed);
+  previewEl.style.display = "block";
+  previewEl.textContent = "Train: " + counts.train + "   Val: " + counts.val + "   Test: " + counts.test;
+}
+
+async function canvasToBlob(canvasEl, mime, quality){
+  return new Promise(resolve => canvasEl.toBlob(b => resolve(b), mime, quality));
+}
+async function getExportImageBytes(rec){
+  // Images the user never navigated to still have rec.working === null (it's
+  // only populated on first view). That's equivalent to "untouched original".
+  if(!rec.working || rec.working.kind === "original") return { blob: rec.originalFile, ext: extOf(rec.id) };
+  const isPng = /\.png$/i.test(rec.id);
+  const mime = isPng ? "image/png" : "image/jpeg";
+  const blob = await canvasToBlob(rec.working.source, mime, 0.92);
+  return { blob, ext: isPng ? ".png" : ".jpg" };
+}
+function extOf(name){ const d = name.lastIndexOf("."); return d === -1 ? ".jpg" : name.slice(d).toLowerCase(); }
+function sanitizeFilename(name){
+  const cleaned = String(name || "").trim().replace(/[^a-zA-Z0-9-_]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+  return cleaned || "dataset";
+}
+
+async function runExport(){
+  const rec0 = state.images[0];
+  const datasetName = sanitizeFilename(document.getElementById("datasetNameInput").value);
+  const useCoco = document.getElementById("fmtCocoCheck").checked;
+  const useVoc = document.getElementById("fmtVocCheck").checked;
+  const splitEnabled = document.getElementById("splitEnableCheck").checked;
+  let split = null;
+  if(splitEnabled){
+    const tp = Number(document.getElementById("splitTrainInput").value)||0;
+    const vp = Number(document.getElementById("splitValInput").value)||0;
+    const sp = Number(document.getElementById("splitTestInput").value)||0;
+    if(tp+vp+sp !== 100){ toastMsg("Split percentages must sum to 100"); return; }
+    split = computeSplit(state.images.length, tp, vp, sp, exportSeed);
   }
 
-  exportBtn.disabled = true;
-  const originalLabel = exportBtn.innerHTML;
-  exportBtn.textContent = "Zipping…";
+  const runBtn = document.getElementById("exportRunBtn");
+  runBtn.disabled = true; const orig = runBtn.textContent; runBtn.textContent = "Preparing…";
 
   try{
     const zip = new JSZip();
-    const imagesFolder = zip.folder("dataset/images");
-    const labelsFolder = zip.folder("dataset/labels");
-
     const pad = n => String(n).padStart(5, "0");
+    const baseNames = [];
+    const cocoImages = [];
 
-    state.images.forEach((rec, i) => {
-      const dot = rec.id.lastIndexOf(".");
-      const ext = dot === -1 ? ".jpg" : rec.id.slice(dot).toLowerCase();
-      const baseName = "img_" + pad(i + 1);
+    for(let i = 0; i < state.images.length; i++){
+      const rec = state.images[i];
+      const baseName = "img_" + pad(i+1);
+      baseNames.push(baseName);
+      const { blob, ext } = await getExportImageBytes(rec);
+      const splitFolder = split ? split.assign[i] + "/" : "";
 
-      // Preserve original bytes untouched — just place the File into the zip.
-      imagesFolder.file(baseName + ext, rec.file);
+      zip.file("dataset/images/" + splitFolder + baseName + ext, blob);
 
       let lines = [];
-      if(!rec.negative && rec.boxes.length > 0){
-        rec.boxes.forEach(box => {
-          const line = convertToYolo(rec, box);
-          if(line) lines.push(line); // skip degenerate boxes silently
-        });
-      }
-      // Negative samples AND images with zero valid boxes both get an empty file.
-      const content = lines.length > 0 ? (lines.join("\n") + "\n") : "";
-      labelsFolder.file(baseName + ".txt", content);
-    });
+      if(!rec.negative) rec.boxes.forEach(b => { const l = convertToYolo(rec, b); if(l) lines.push(l); });
+      zip.file("dataset/labels/" + splitFolder + baseName + ".txt", lines.length ? lines.join("\n") + "\n" : "");
+
+      if(useVoc) zip.file("dataset/labels_voc/" + splitFolder + baseName + ".xml", buildVocXml(rec, baseName, ext));
+      cocoImages.push(rec);
+      runBtn.textContent = "Preparing… " + (i+1) + "/" + state.images.length;
+    }
 
     zip.file("dataset/classes.txt", CLASS_NAME + "\n");
+    if(useCoco) zip.file("dataset/labels_coco/annotations.json", buildCocoDataset(cocoImages, baseNames));
+    if(split){
+      zip.file("dataset/split.txt",
+        "train: " + split.counts.train + "\nval: " + split.counts.val + "\ntest: " + split.counts.test + "\n(seed " + exportSeed + ")\n");
+    }
 
-    const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions:{level:6} },
-      (meta) => { exportBtn.textContent = "Zipping… " + Math.round(meta.percent) + "%"; });
+    runBtn.textContent = "Zipping…";
+    const blob = await zip.generateAsync({ type:"blob", compression:"DEFLATE", compressionOptions:{level:6} },
+      meta => { runBtn.textContent = "Zipping… " + Math.round(meta.percent) + "%"; });
 
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "dataset.zip";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    const a = document.createElement("a"); a.href = url; a.download = datasetName + ".zip";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 4000);
 
-    toast("Exported dataset.zip");
+    toastMsg("Exported " + datasetName + ".zip");
+    toggleSheet("exportSheet", false);
   } catch(err){
-    console.error(err);
-    toast("Export failed — see console");
+    console.error(err); toastMsg("Export failed — see console");
   } finally {
-    exportBtn.disabled = false;
-    exportBtn.innerHTML = originalLabel;
+    runBtn.disabled = false; runBtn.textContent = orig;
   }
+}
+
+/* =========================================================================
+   LOCAL PERSISTENCE (annotation metadata only — never image bytes)
+   ========================================================================= */
+function buildProjectData(){
+  return {
+    version: 1,
+    projectName: document.getElementById("projectNameInput").value || "dataset",
+    savedAt: Date.now(),
+    images: state.images.map(r => ({
+      fingerprint: r.fingerprint, filename: r.id,
+      boxes: r.boxes.map(b => ({...b})), negative: r.negative, annotated: r.annotated,
+      prepHistory: r.prepHistory.slice()
+    }))
+  };
+}
+function scheduleAutosave(){
+  clearTimeout(state.autosaveTimer);
+  state.autosaveTimer = setTimeout(() => {
+    try{
+      localStorage.setItem(LS_KEY, JSON.stringify(buildProjectData()));
+      localSavedTagEl.classList.add("show");
+      setTimeout(() => localSavedTagEl.classList.remove("show"), 2200);
+    } catch(e){ console.warn("Local save failed", e); }
+  }, 800);
+}
+function loadPendingRestoreFromData(data){
+  state.pendingRestore = new Map();
+  (data.images || []).forEach(img => state.pendingRestore.set(img.fingerprint, img));
+  if(data.projectName) document.getElementById("projectNameInput").value = data.projectName;
+}
+function tryLoadLocalOnStartup(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(!raw) return;
+    const data = JSON.parse(raw);
+    loadPendingRestoreFromData(data);
+    if(state.pendingRestore.size > 0) toastMsg("Found a local save — re-import your images to restore annotations");
+  } catch(e){ /* ignore corrupt local data */ }
+}
+function clearLocalData(){
+  localStorage.removeItem(LS_KEY);
+  state.pendingRestore = new Map();
+  toastMsg("Local project data cleared");
+}
+function saveProjectToFile(){
+  if(state.images.length === 0){ toastMsg("Nothing to save yet"); return; }
+  const data = buildProjectData();
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href = url; a.download = sanitizeFilename(data.projectName) + "-project.json";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  toastMsg("Project file saved");
+}
+function loadProjectFromFile(file){
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const data = JSON.parse(reader.result);
+      loadPendingRestoreFromData(data);
+      toastMsg("Project loaded — now re-import the original images to reattach annotations");
+    } catch(e){ toastMsg("Could not read that project file"); }
+  };
+  reader.readAsText(file);
 }
 
 /* =========================================================================
    NAV / STATUS UI
    ========================================================================= */
 function refreshNavUI(){
-  const total = state.images.length;
-  const idx = state.current;
-  const rec = currentRecord();
+  const total = state.images.length, idx = state.current, rec = currentRecord();
+  const list = visibleIndices();
+  if(state.filter === "all") counterEl.textContent = total === 0 ? "0 / 0" : (idx + 1) + " / " + total;
+  else { const pos = list.indexOf(idx); counterEl.textContent = (pos===-1?"–":pos+1) + " / " + list.length + " (filtered)"; }
 
-  counterEl.textContent = total === 0 ? "0 / 0" : (idx + 1) + " / " + total;
+  statusBadge.className = "badge";
+  if(!rec){ statusBadge.textContent = "No image"; statusBadge.classList.add("empty"); }
+  else if(rec.negative){ statusBadge.textContent = "No object"; statusBadge.classList.add("negative"); }
+  else if(rec.annotated && rec.boxes.length > 0){ statusBadge.textContent = "✓ Annotated"; statusBadge.classList.add("annotated"); }
+  else { statusBadge.textContent = "○ Not annotated"; statusBadge.classList.add("empty"); }
 
-  statusBadge.className = "";
-  if(!rec){
-    statusBadge.textContent = "No image";
-    statusBadge.classList.add("empty");
-  } else if(rec.negative){
-    statusBadge.textContent = "No object";
-    statusBadge.classList.add("negative");
-  } else if(rec.annotated && rec.boxes.length > 0){
-    statusBadge.textContent = "✓ Annotated";
-    statusBadge.classList.add("annotated");
-  } else {
-    statusBadge.textContent = "○ Not annotated";
-    statusBadge.classList.add("empty");
-  }
+  objectsCounterEl.innerHTML = "Objects: <b>" + (rec ? rec.boxes.length : 0) + "</b>";
+  if(rec && state.selectedIndex >= 0 && rec.boxes[state.selectedIndex]){ selectedTagEl.textContent = "Box " + (state.selectedIndex+1) + " selected"; selectedTagEl.classList.add("show"); }
+  else selectedTagEl.classList.remove("show");
 
-  const objCount = rec ? rec.boxes.length : 0;
-  objectsCounterEl.innerHTML = "Objects: <b>" + objCount + "</b>";
-
-  if(rec && state.selectedIndex >= 0 && rec.boxes[state.selectedIndex]){
-    selectedTagEl.textContent = "Box " + (state.selectedIndex + 1) + " selected";
-    selectedTagEl.classList.add("show");
-  } else {
-    selectedTagEl.classList.remove("show");
-  }
-
-  prevBtn.disabled = total === 0 || idx <= 0;
-  nextBtn.disabled = total === 0 || idx >= total - 1;
+  prevBtn.disabled = total === 0 || list.indexOf(idx) <= 0;
+  nextBtn.disabled = total === 0 || list.indexOf(idx) === list.length - 1 || list.indexOf(idx) === -1 && list.length === 0;
   saveBtn.disabled = total === 0;
   deleteSelectedBtn.disabled = total === 0 || state.selectedIndex < 0;
   clearAllBtn.disabled = total === 0 || (!rec || rec.boxes.length === 0);
   undoBtn.disabled = state.undoStack.length === 0;
+  redoBtn.disabled = state.redoStack.length === 0;
   noObjBtn.classList.toggle("active", !!rec?.negative);
   noObjBtn.disabled = total === 0;
-
+  cropBtn.disabled = total === 0;
+  resizeBtn.disabled = total === 0;
   updateProgressUI();
 }
-
 function updateProgressUI(){
-  const total = state.images.length;
-  const annotated = state.images.filter(r => r.annotated).length;
-  totalCountEl.textContent = total;
-  annotatedCountEl.textContent = annotated;
+  const total = state.images.length, annotated = state.images.filter(r => r.annotated).length;
+  totalCountEl.textContent = total; annotatedCountEl.textContent = annotated;
   progressBarFill.style.width = total === 0 ? "0%" : Math.round((annotated/total)*100) + "%";
   emptyState.classList.toggle("hidden", total !== 0);
 }
+
+/* =========================================================================
+   SHEET / MODAL HELPERS
+   ========================================================================= */
+function toggleSheet(id, show){
+  const sheet = document.getElementById(id);
+  const backdrop = document.getElementById(id.replace("Sheet","Backdrop"));
+  sheet.classList.toggle("show", show);
+  if(backdrop) backdrop.classList.toggle("show", show);
+}
+[["toolsSheet","toolsBackdrop","toolsCloseBtn"],["resizeSheet","resizeBackdrop","resizeCloseBtn"],
+ ["statsSheet","statsBackdrop","statsCloseBtn"],["validateSheet","validateBackdrop","validateCloseBtn"],
+ ["exportSheet","exportBackdrop","exportCloseBtn"]].forEach(([sheetId,backId,closeId]) => {
+  document.getElementById(backId).addEventListener("click", () => toggleSheet(sheetId, false));
+  document.getElementById(closeId).addEventListener("click", () => toggleSheet(sheetId, false));
+});
 
 /* =========================================================================
    WIRE UP CONTROLS
@@ -984,25 +1790,88 @@ nextBtn.addEventListener("click", nextImage);
 saveBtn.addEventListener("click", saveAnnotation);
 noObjBtn.addEventListener("click", toggleNoObject);
 undoBtn.addEventListener("click", undo);
+redoBtn.addEventListener("click", redo);
 deleteSelectedBtn.addEventListener("click", deleteSelectedBox);
 clearAllBtn.addEventListener("click", clearAllBoxes);
-exportBtn.addEventListener("click", exportDataset);
+exportBtn.addEventListener("click", openExportSheet);
+cropBtn.addEventListener("click", enterCropMode);
+resizeBtn.addEventListener("click", openResizeSheet);
 
 importBtn.addEventListener("click", () => importInput.click());
 emptyImportBtn.addEventListener("click", () => importInput.click());
-importInput.addEventListener("change", (e) => {
-  if(e.target.files && e.target.files.length){
-    loadImages(e.target.files);
-  }
-  importInput.value = ""; // allow re-selecting the same files later
+importInput.addEventListener("change", (e) => { if(e.target.files && e.target.files.length) loadImages(e.target.files); importInput.value = ""; });
+
+document.getElementById("toolsBtn").addEventListener("click", () => toggleSheet("toolsSheet", true));
+
+document.getElementById("cropCancelBtn").addEventListener("click", exitCropMode);
+document.getElementById("cropResetBtn").addEventListener("click", () => { const rec = currentRecord(); state.cropRect = defaultCropRect(rec, state.cropAspect); render(); });
+document.getElementById("cropConfirmBtn").addEventListener("click", confirmCrop);
+document.getElementById("cropAspects").addEventListener("click", (e) => {
+  const btn = e.target.closest(".chip"); if(!btn) return;
+  document.querySelectorAll("#cropAspects .chip").forEach(b => b.classList.remove("active")); btn.classList.add("active");
+  state.cropAspect = btn.dataset.aspect;
+  const rec = currentRecord(); state.cropRect = defaultCropRect(rec, state.cropAspect); render();
 });
 
-// Prevent the page itself from scrolling/bouncing while drawing on mobile
-["touchstart","touchmove"].forEach(evtName=>{
-  viewerWrap.addEventListener(evtName, (e)=>{ e.preventDefault(); }, { passive:false });
+document.getElementById("resizeCancelBtn").addEventListener("click", () => toggleSheet("resizeSheet", false));
+document.getElementById("resizeApplyBtn").addEventListener("click", applyResizeFromSheet);
+document.getElementById("resizePresets").addEventListener("click", (e) => {
+  const btn = e.target.closest(".chip"); if(!btn) return;
+  document.getElementById("resizeWInput").value = btn.dataset.w; document.getElementById("resizeHInput").value = btn.dataset.h;
+});
+document.getElementById("resizeModes").addEventListener("click", (e) => {
+  const btn = e.target.closest(".chip"); if(!btn) return;
+  document.querySelectorAll("#resizeModes .chip").forEach(b => b.classList.remove("active")); btn.classList.add("active");
+  resizeMode = btn.dataset.mode; document.getElementById("resizeModeHint").textContent = resizeHints[resizeMode];
 });
 
-// Optional desktop keyboard shortcuts (do not affect touch operation)
+document.getElementById("rotateCwBtn").addEventListener("click", () => { const r = currentRecord(); if(!r) return; applyRotate(r, "cw"); resizeCanvasToViewer(); render(); refreshNavUI(); refreshMetadataPanel(); scheduleAutosave(); toastMsg("Rotated 90° clockwise"); });
+document.getElementById("rotateCcwBtn").addEventListener("click", () => { const r = currentRecord(); if(!r) return; applyRotate(r, "ccw"); resizeCanvasToViewer(); render(); refreshNavUI(); refreshMetadataPanel(); scheduleAutosave(); toastMsg("Rotated 90° counter-clockwise"); });
+document.getElementById("flipHBtn").addEventListener("click", () => { const r = currentRecord(); if(!r) return; applyFlip(r, "h"); render(); scheduleAutosave(); toastMsg("Flipped horizontally"); });
+document.getElementById("flipVBtn").addEventListener("click", () => { const r = currentRecord(); if(!r) return; applyFlip(r, "v"); render(); scheduleAutosave(); toastMsg("Flipped vertically"); });
+document.getElementById("resetToOriginalBtn").addEventListener("click", resetToOriginal);
+document.getElementById("duplicateBtn").addEventListener("click", duplicateSelectedBox);
+
+document.getElementById("zoomInBtn").addEventListener("click", () => { state.view.zoom = Math.min(6, state.view.zoom * 1.3); render(); });
+document.getElementById("zoomOutBtn").addEventListener("click", () => { state.view.zoom = Math.max(0.5, state.view.zoom / 1.3); render(); });
+document.getElementById("fitBtn").addEventListener("click", () => { state.view = { zoom:1, panX:0, panY:0 }; render(); });
+document.getElementById("resetZoomBtn").addEventListener("click", () => { state.view = { zoom:1, panX:0, panY:0 }; render(); });
+
+const brightnessRange = document.getElementById("brightnessRange"), contrastRange = document.getElementById("contrastRange"), grayscaleCheck = document.getElementById("grayscaleCheck");
+brightnessRange.addEventListener("input", () => { state.preview.brightness = Number(brightnessRange.value); document.getElementById("brightnessVal").textContent = state.preview.brightness + "%"; render(); });
+contrastRange.addEventListener("input", () => { state.preview.contrast = Number(contrastRange.value); document.getElementById("contrastVal").textContent = state.preview.contrast + "%"; render(); });
+grayscaleCheck.addEventListener("change", () => { state.preview.grayscale = grayscaleCheck.checked; render(); });
+document.getElementById("resetPreviewBtn").addEventListener("click", () => {
+  state.preview = { brightness:100, contrast:100, grayscale:false };
+  brightnessRange.value = 100; contrastRange.value = 100; grayscaleCheck.checked = false;
+  document.getElementById("brightnessVal").textContent = "100%"; document.getElementById("contrastVal").textContent = "100%";
+  render();
+});
+
+document.getElementById("dimOutsideCheck").addEventListener("change", (e) => { state.dimOutside = e.target.checked; render(); });
+document.getElementById("gridCheck").addEventListener("change", (e) => { state.showGrid = e.target.checked; render(); });
+document.getElementById("crosshairCheck").addEventListener("change", (e) => { state.showCrosshair = e.target.checked; });
+document.getElementById("coordCheck").addEventListener("change", (e) => { state.coordReadout = e.target.checked; if(!e.target.checked) coordReadoutEl.classList.remove("show"); });
+const opacityRange = document.getElementById("opacityRange");
+opacityRange.addEventListener("input", () => { state.boxOpacity = Number(opacityRange.value)/100; document.getElementById("opacityVal").textContent = opacityRange.value + "%"; render(); });
+
+document.getElementById("filterChips").addEventListener("click", (e) => { const b = e.target.closest(".chip"); if(!b) return; setFilter(b.dataset.filter); refreshNavUI(); });
+document.getElementById("jumpBtn").addEventListener("click", () => jumpToImage(Number(document.getElementById("jumpInput").value)));
+
+document.getElementById("statsBtn").addEventListener("click", showStatistics);
+document.getElementById("validateBtn").addEventListener("click", runValidation);
+
+document.getElementById("saveProjectBtn").addEventListener("click", saveProjectToFile);
+document.getElementById("loadProjectBtn").addEventListener("click", () => document.getElementById("loadProjectInput").click());
+document.getElementById("loadProjectInput").addEventListener("change", (e) => { if(e.target.files[0]) loadProjectFromFile(e.target.files[0]); e.target.value=""; });
+document.getElementById("clearLocalBtn").addEventListener("click", clearLocalData);
+
+document.getElementById("splitEnableCheck").addEventListener("change", updateSplitPreview);
+["splitTrainInput","splitValInput","splitTestInput"].forEach(id => document.getElementById(id).addEventListener("input", updateSplitPreview));
+document.getElementById("exportRunBtn").addEventListener("click", runExport);
+
+["touchstart","touchmove"].forEach(evtName => viewerWrap.addEventListener(evtName, (e) => { e.preventDefault(); }, { passive:false }));
+
 window.addEventListener("keydown", (e) => {
   if(state.images.length === 0) return;
   switch(e.key){
@@ -1010,23 +1879,19 @@ window.addEventListener("keydown", (e) => {
     case "ArrowRight": case "n": case "N": nextImage(); break;
     case "s": case "S": saveAnnotation(); break;
     case "Delete": case "Backspace": deleteSelectedBox(); break;
+    case "z": case "Z": if(e.ctrlKey||e.metaKey){ e.shiftKey ? redo() : undo(); } break;
+    case "d": case "D": duplicateSelectedBox(); break;
   }
 });
+window.addEventListener("resize", () => { if(currentRecord()){ resizeCanvasToViewer(); render(); } });
+window.addEventListener("orientationchange", () => { setTimeout(() => { if(currentRecord()){ resizeCanvasToViewer(); render(); } }, 250); });
 
-window.addEventListener("resize", () => {
-  if(currentRecord()){
-    resizeCanvasToViewer();
-    render();
-  }
-});
-// Orientation changes on Android sometimes fire resize late; nudge again shortly after.
-window.addEventListener("orientationchange", () => {
-  setTimeout(() => { if(currentRecord()){ resizeCanvasToViewer(); render(); } }, 250);
-});
-
-// Initial paint
+/* Init */
+tryLoadLocalOnStartup();
 resizeCanvasToViewer();
 refreshNavUI();
+refreshMetadataPanel();
+refreshBoxList();
 
 })();
 </script>
