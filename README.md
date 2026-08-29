@@ -1,81 +1,435 @@
 # TapBox
 
-A self-contained, browser-based bounding-box annotation tool for building object-detection datasets — built to be used with your thumb, on your phone.
+A self-contained, browser-based image annotation and dataset-preparation tool for creating object-detection datasets — designed especially for touchscreens and Android phones.
 
 ## Overview
 
-TapBox is a single-page web app for drawing bounding-box annotations on images and exporting them in YOLO label format. It's designed first for **Android phones and touchscreens**: large touch targets, finger-drawn boxes, and a layout that works in a browser tab rather than requiring an installed app.
+TapBox is a single-page web application for importing images, creating and editing bounding-box annotations, preparing images, reviewing annotations, saving project metadata, and exporting datasets.
 
-It runs entirely **client-side** — there is no backend, no image upload, and no server component required for annotation, navigation, or export. The only network dependency is a CDN-hosted JavaScript library (JSZip) used to build the exported `.zip` file; see [Privacy](#privacy) and [Credits](#credits--dependencies) below for exactly what that means.
+It is designed with a **mobile-first interface** using large touch-friendly controls and Pointer Events for touch and mouse interaction.
+
+TapBox is implemented as a single `index.html` file containing the application's HTML, CSS, and JavaScript. The application processes imported images in the browser.
+
+The current annotation system uses a single object class:
+
+```text
+class_id: 0
+class_name: object
+```
 
 ## Features
 
-Everything below reflects what the current implementation actually does:
+### Image Import
 
-- **Mobile-first UI** — large buttons, touch-friendly controls, safe-area padding for notches/home indicators
-- **Android Chrome support**, built on standard Pointer Events (`pointerdown` / `pointermove` / `pointerup`), so it also works with mouse input on desktop
-- **Multiple bounding boxes per image** — draw any number of boxes on a single image
-- **Tap-to-select** — tap an existing box to select it before moving or resizing it, so drawing a new box never accidentally drags an old one
-- **Move and resize** selected boxes via corner-handle dragging
-- **Delete Selected** (removes just the selected box) and **Clear All** (removes every box on the current image)
-- **Undo** — steps back through box create/move/resize/delete/clear actions, per image
-- **Multi-image import** — select many images at once from your device
-- **Previous / Next navigation** with an image counter (`23 / 500`) and per-image annotation status (`✓ Annotated`, `○ Not annotated`, `No object`)
-- **Objects counter** showing how many boxes are on the current image
-- **"No Object" / negative sample marking**, producing an empty label file for images with no target object
-- **In-memory annotation persistence while the app is open** — navigate back and forth between images without losing boxes (see [important limitation](#privacy) below)
-- **YOLO-format label export**, one line per bounding box
-- **ZIP dataset export** (images, labels, and a `classes.txt`) via JSZip
-- **Original image files are preserved byte-for-byte** in the export — images are never re-encoded or re-compressed
-- **Coordinates normalized to the original image dimensions**, not the on-screen scaled size (see [Coordinate System](#coordinate-system))
-- **Optional keyboard shortcuts** for desktop use: `←`/`P` previous, `→`/`N` next, `S` save, `Delete`/`Backspace` delete the selected box
-- Overall dataset progress indicator (`Annotated 18 / 500`)
+- Import multiple images at once
+- Supported image formats:
+  - JPEG
+  - PNG
+  - WebP
+- Images are loaded directly in the browser
+- Imported images are kept in the current project session
+- Duplicate filenames are given unique internal IDs
 
-TapBox currently supports a single object class (`object`, class ID `0`). Multi-class support is a possible future addition — see [Roadmap](#roadmap).
+### Bounding-Box Annotation
 
-## Screenshots
+- Draw bounding boxes using touch or mouse input
+- Create multiple boxes on one image
+- Tap an existing box to select it
+- Move selected boxes
+- Resize selected boxes using corner handles
+- Resize selected boxes using edge handles
+- Delete the selected box
+- Delete all boxes on the current image
+- Duplicate the selected box
+- Display box numbers
+- Display the currently selected box
+- Minimum box size is enforced when creating a new box
 
-![TapBox](screenshots/tapbox.png)
+Bounding boxes are stored in the coordinate system of the current **working image**, rather than the screen or CSS dimensions.
 
-## How to use
+## Image Navigation
 
-1. Open `index.html` in a browser (see [Running locally](#running-locally)).
-2. Tap **Import** and select one or more images from your device.
-3. Draw a bounding box by dragging your finger over the target object. Draw as many boxes as the image needs.
-4. Tap an existing box to select it, then drag inside it to move it, or drag a corner handle to resize it.
-5. If an image has no target object, tap **No Object** instead of drawing a box.
-6. Tap **Save** to confirm the current image's annotation, then **Next** to move on. (Boxes are also kept in memory automatically as you draw — Save is your explicit confirmation.)
-7. Once you've gone through your images, tap **Export Dataset (.zip)** to download the finished dataset.
+- Previous image
+- Next image
+- Image counter
+- Direct image-number jump
+- Navigation respects the currently selected filter
+- Per-image annotation status
+- Object counter
+- Overall dataset annotation progress
 
-### On Android
+Images can be marked as:
 
-Open `index.html` in **Chrome for Android** (directly from storage, or via a hosted URL such as GitHub Pages — see below). The interface is sized for a phone screen and works with touch alone; no mouse or keyboard is required. Rotate the device freely — the canvas re-fits the image on orientation change.
-
-## YOLO format
-
-Each image gets a corresponding `.txt` label file. Every bounding box on that image produces one line:
-
+```text
+✓ Annotated
+○ Not annotated
+No object
 ```
+
+## No Object / Negative Samples
+
+An image can be marked as **No Object**.
+
+No-object images are exported with empty YOLO label files and are represented appropriately in the other supported export formats.
+
+## Undo and Redo
+
+TapBox provides:
+
+- Undo
+- Redo
+
+The undo system covers annotation and image-preparation changes such as:
+
+- Creating boxes
+- Moving boxes
+- Resizing boxes
+- Deleting boxes
+- Clearing boxes
+- Duplicating boxes
+- Crop
+- Resize
+- Rotate
+- Flip
+- Reset to original
+
+## Zoom and View
+
+TapBox includes a dedicated Zoom & View tool.
+
+Available controls:
+
+- Zoom in
+- Zoom out
+- Fit to Screen
+- Reset Zoom
+
+The current implementation supports **two-finger pinch zoom and pan**.
+
+Zoom and pan are view operations. They do not change the stored bounding-box coordinates.
+
+The application maintains a separate image-coordinate system and converts between screen coordinates and working-image coordinates during annotation.
+
+## Crop
+
+TapBox includes an interactive crop mode.
+
+Available crop aspect options:
+
+- Free
+- 1:1
+- 4:3
+- 16:9
+- 3:4
+- 9:16
+
+Crop controls include:
+
+- Move crop rectangle
+- Resize from corners
+- Resize from edges
+- Reset crop selection
+- Cancel crop
+- Confirm/apply crop
+
+The crop rectangle is constrained to the working image.
+
+When a crop is applied:
+
+1. A new working image is created.
+2. Existing bounding boxes are transformed into the new coordinate system.
+3. Boxes completely outside the crop are removed.
+4. Boxes intersecting the crop are clipped to the crop area.
+5. The crop operation is added to the preparation history.
+
+## Image Resize
+
+TapBox provides an image resize tool.
+
+Preset sizes include:
+
+```text
+256 × 256
+320 × 320
+416 × 416
+512 × 512
+640 × 640
+```
+
+Custom width and height values can also be entered.
+
+Resize modes:
+
+### Fit + Letterbox
+
+Preserves the image aspect ratio and adds padding where necessary.
+
+### Stretch
+
+Resizes width and height independently to the requested dimensions.
+
+This can change the image aspect ratio.
+
+### Crop to Fit
+
+Center-crops the image to the required aspect ratio and then scales it to the requested dimensions.
+
+Bounding boxes are transformed to match the resized image.
+
+## Rotate and Flip
+
+TapBox supports:
+
+- Rotate 90° clockwise
+- Rotate 90° counter-clockwise
+- Flip horizontally
+- Flip vertically
+
+These operations create a new working image and transform the existing bounding boxes to the new coordinate system.
+
+## Reset to Original
+
+The **Reset to Original** tool restores the current image to its original image dimensions and pixels.
+
+It also removes:
+
+- Crop operations
+- Resize operations
+- Rotation operations
+- Flip operations
+- Existing bounding boxes
+- No Object state
+
+Because the annotations no longer correspond to the original pixels after preparation operations, resetting also removes those annotations.
+
+## Preview Adjustments
+
+TapBox provides display-only image adjustments for annotation.
+
+Available controls:
+
+- Brightness
+- Contrast
+- Grayscale preview
+- Reset Preview
+
+These adjustments affect the on-screen preview only.
+
+They do **not** modify the exported image pixels.
+
+## Visibility Tools
+
+The Tools panel includes:
+
+- Dim outside selected box
+- Grid overlay
+- Crosshair while drawing
+- Coordinate readout
+- Bounding-box fill opacity control
+
+The coordinate readout displays the current image-space coordinate while drawing or editing.
+
+## Box List
+
+TapBox provides a box list for the current image.
+
+The list can be used to:
+
+- View existing boxes
+- Select a specific box
+- Delete an individual box
+
+The selected box is highlighted in the interface.
+
+## Filtering
+
+Images can be filtered using:
+
+- All
+- Annotated
+- Not annotated
+- No Object
+- Needs Review
+
+The **Needs Review** filter uses the application's validation system to identify images containing validation warnings.
+
+## Dataset Statistics
+
+TapBox includes a Dataset Statistics panel.
+
+The statistics system calculates information from the current dataset, including:
+
+- Total image count
+- Annotated image count
+- Negative image count
+- Total object count
+- Average objects per image containing objects
+- Minimum objects per image
+- Maximum objects per image
+- Image-resolution distribution
+- Bounding-box area statistics
+
+## Annotation Validation
+
+TapBox includes a built-in validation check.
+
+The validation system checks the current annotations for suspicious conditions, including invalid coordinates, boxes touching image edges, and unexpected class IDs.
+
+Images containing warnings can be opened directly from the validation results.
+
+If no warnings are found, TapBox reports that the annotations pass the available validation checks.
+
+## Metadata
+
+The Tools panel displays metadata for the current image, including:
+
+- Filename
+- Original dimensions
+- Prepared dimensions
+- Object count
+- Annotation status
+
+## Local Autosave
+
+TapBox automatically saves **project metadata** to browser `localStorage`.
+
+The locally saved information includes:
+
+- Project name
+- Image fingerprint
+- Filename
+- Bounding boxes
+- No Object state
+- Annotation state
+- Image preparation history
+
+The actual image bytes are not stored in the local project metadata.
+
+When TapBox starts and finds a local project save, it can restore the saved metadata after the corresponding original images are imported again.
+
+## Project Files
+
+TapBox can save the current project as a JSON project file.
+
+Example:
+
+```text
+dataset-project.json
+```
+
+The project file stores annotation and preparation metadata rather than image pixels.
+
+A saved project contains information necessary to restore:
+
+- Bounding boxes
+- Negative/No Object state
+- Annotation state
+- Crop history
+- Resize history
+- Rotation history
+- Flip history
+
+### Loading a Project
+
+A saved project can be loaded through the Tools panel.
+
+After loading a project, the original images must be imported again.
+
+TapBox matches the imported images using a fingerprint based on:
+
+```text
+filename | file size | last modified time
+```
+
+This allows the saved project metadata to be reattached to the corresponding original images.
+
+## YOLO Export
+
+TapBox always exports YOLO labels.
+
+Each image receives a corresponding `.txt` file.
+
+The format is:
+
+```text
 class_id x_center y_center width height
 ```
 
-All four numeric values are normalized to a `0.0`–`1.0` range relative to the image's width and height. For example:
+Example:
 
-```
+```text
 0 0.523438 0.476563 0.312500 0.421875
 ```
 
-- `class_id` — always `0` in the current single-class build (`object`)
-- `x_center`, `y_center` — the center of the box, as a fraction of image width/height
-- `width`, `height` — the box's size, as a fraction of image width/height
+The coordinates are normalized to the `0.0–1.0` range using the current working image dimensions.
 
-An image with multiple boxes gets multiple lines, one per box, in the order they were drawn. An image marked "No Object" (or with no saved boxes) gets an **empty** `.txt` file.
+The current class is:
 
-## Dataset structure
-
-Exporting produces a `dataset.zip` with this layout:
-
+```text
+0 object
 ```
+
+Images marked **No Object** receive an empty label file.
+
+## COCO Export
+
+COCO JSON export is optionally available.
+
+The generated COCO dataset contains:
+
+- Images
+- Annotations
+- Bounding boxes
+- Areas
+- Categories
+
+The current category is:
+
+```text
+id: 0
+name: object
+```
+
+## Pascal VOC Export
+
+Pascal VOC XML export is optionally available.
+
+Each image can receive a corresponding XML annotation containing:
+
+- Filename
+- Image dimensions
+- Object name
+- Bounding-box coordinates
+
+## Train / Validation / Test Split
+
+Dataset export can optionally split the dataset into:
+
+- Train
+- Validation
+- Test
+
+The user can specify:
+
+```text
+Train %
+Validation %
+Test %
+```
+
+The percentages must add up to `100%`.
+
+The split uses a deterministic seeded shuffle.
+
+The export also includes a `split.txt` file containing the resulting counts and seed.
+
+## Dataset ZIP Export
+
+TapBox creates a ZIP archive containing the exported dataset.
+
+A typical YOLO-only export has this structure:
+
+```text
 dataset/
 ├── images/
 │   ├── img_00001.jpg
@@ -88,75 +442,204 @@ dataset/
 └── classes.txt
 ```
 
-Images are renamed sequentially (`img_00001`, `img_00002`, ...) in import order, keeping their original file extension and original bytes unmodified. Each label file shares the same base name as its image (`img_00001.jpg` ↔ `img_00001.txt`), so the two directories line up index-for-index. `classes.txt` lists the class names by line, matching YOLO's `class_id` indexing (line 1 = class `0`).
+When additional export options are enabled, the archive can also contain:
 
-## Coordinate system
+```text
+dataset/
+├── labels_coco/
+│   └── annotations.json
+├── labels_voc/
+│   ├── img_00001.xml
+│   └── ...
+└── split.txt
+```
 
-Images are scaled to fit the viewer on screen — the displayed size depends on your phone's screen size, orientation, and pixel ratio, none of which match the image's actual resolution. TapBox reads the image's true dimensions (`image.naturalWidth` / `image.naturalHeight`) and converts every touch coordinate through a fit-transform (scale + centering offset) back into the image's original pixel space before storing or exporting it. Annotation math is never done in on-screen/CSS pixel space — only in original image pixels, which are then normalized to `0–1` for the YOLO output. This keeps annotations correct regardless of screen size, orientation, or how the image was scaled for display.
+Images are assigned sequential export names such as:
 
-## Running locally
+```text
+img_00001
+img_00002
+img_00003
+```
 
-TapBox is a single HTML file with inline CSS and JavaScript — there's no build step, no `npm install`, and no server required for annotation and export.
+The ZIP archive is generated in the browser using JSZip.
 
-- **Simplest**: open `index.html` directly in a browser (double-click it, or use "Open with" on a phone).
-- **Alternative**: serve it from any static file server or GitHub Pages if you prefer a URL over a local file.
+## Exported Image Data
 
-**Browser note:** the app needs network access the first time it loads (in that browser/session) to fetch the JSZip library from a CDN, which is required for the **Export** step. Import, drawing, navigation, and undo do not require network access. If your browser has already cached the JSZip script, export may also work without a live connection — but this isn't guaranteed.
+TapBox distinguishes between untouched original images and prepared working images.
+
+### Untouched images
+
+If an image has not been prepared, TapBox exports its original file directly.
+
+### Prepared images
+
+If an image has been cropped, resized, rotated, or flipped, the prepared working canvas is exported instead.
+
+JPEG working images are generated as JPEG data with the application's configured canvas quality.
+
+PNG working images are generated as PNG data.
+
+Therefore, **prepared images should not be described as byte-for-byte copies of the original files**.
+
+## Coordinate System
+
+TapBox keeps annotation coordinates in working-image pixel space.
+
+The rendering pipeline is:
+
+```text
+Original Image
+      ↓
+Working Image
+      ↓
+Fit-to-screen transform
+      ↓
+Zoom / Pan view transform
+      ↓
+Screen / Touch coordinates
+```
+
+During annotation, screen coordinates are converted back into working-image coordinates.
+
+This means bounding-box coordinates are not based on the phone's CSS display size.
+
+The same coordinate system is then used when generating dataset annotations.
+
+## Image Preparation History
+
+Crop, resize, rotate, and flip operations are recorded in the image's preparation history.
+
+This history is used by the project persistence system so that prepared images can be reconstructed after the original images are imported again.
+
+## Mobile / Touch Interaction
+
+TapBox uses Pointer Events and supports touch interaction directly on the canvas.
+
+The current interaction system includes:
+
+- Single-finger bounding-box creation
+- Single-finger box movement
+- Single-finger box resizing
+- Single-finger crop manipulation
+- Two-finger pinch zoom
+- Two-finger pan
+
+The viewer also disables normal browser touch gestures over the annotation canvas so that touch input can be handled by TapBox.
+
+## Running Locally
+
+TapBox is contained in a single HTML file.
+
+No build system is required.
+
+No `npm install` step is required.
+
+Open:
+
+```text
+index.html
+```
+
+in a modern browser.
+
+The application can also be hosted from a static web server or GitHub Pages.
 
 ## GitHub Pages
 
-You can use the hosted version of **TapBox** directly without downloading or installing anything:
+A hosted version of TapBox can be used from:
 
-**https://halloweeks.github.io/tapbox/**
+https://halloweeks.github.io/tapbox/
 
-Open the link in **Chrome on Android** to start labeling images.
+Open it in a modern browser to use the annotation tool without installing a separate application.
 
-Your images and annotations are processed locally in your browser. **TapBox does not upload your imported images to the GitHub repository or to a TapBox server.**
+## Dependencies
 
-## Privacy
+TapBox currently loads **JSZip 3.10.1** from the Cloudflare CDN:
 
-Images you import are read and processed entirely in your browser (via `<input type="file">`, `FileReader`/`URL.createObjectURL`, and `<canvas>`). **TapBox itself never uploads, transmits, or sends your images or annotations to any server.** All annotation data lives only in the page's JavaScript memory for the current browser session.
+https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js
 
-Two things worth knowing:
+JSZip is used to generate the dataset ZIP archive in the browser.
 
-- **Nothing is saved automatically.** Reloading the page, closing the tab, or navigating away discards all unsaved annotations. Export your dataset before you close the tab.
-- **JSZip is loaded from a third-party CDN** (`cdnjs.cloudflare.com`) at page load, purely to build the exported `.zip` client-side. That single script request is the only network call the app makes; loading it is subject to that CDN's own network/logging behavior, outside TapBox's control. No image or annotation data is sent as part of that request.
+The rest of the application is implemented directly in the HTML file using HTML, CSS, and JavaScript.
 
-## Browser compatibility
+## Privacy and Data Handling
 
-TapBox relies on standard, broadly-supported web APIs: Pointer Events, `<canvas>`, `FileReader`/`Blob`/`URL.createObjectURL`, and modern CSS (including `dvh` units and `env(safe-area-inset-*)`).
+TapBox processes imported images in the browser.
 
-- **Chrome for Android** — primary target, fully supported
-- **Chrome / Edge (desktop)** — fully supported, including mouse-based drawing and keyboard shortcuts
-- **Firefox (desktop & Android)** — expected to work; uses the same standard APIs, but hasn't been exhaustively tested
-- **Safari (iOS/macOS)** — expected to work on reasonably recent versions (Pointer Events and `dvh` require modern Safari), but hasn't been exhaustively tested
+The application does not contain a TapBox backend for uploading annotation images.
 
-If you hit a browser-specific issue, please open an issue with your browser/OS version.
+Project metadata can be stored locally using browser `localStorage`.
 
-## License
+Saved project JSON files contain annotation and image-preparation metadata rather than the actual image pixels.
 
-[MIT](./LICENSE) — a simple, permissive license appropriate for a small open-source utility.
+The original image files must be available again when restoring a saved project.
+
+## Browser APIs Used
+
+The application uses browser functionality including:
+
+- File input
+- File objects
+- Blob
+- `URL.createObjectURL`
+- Canvas
+- Pointer Events
+- `localStorage`
+- FileReader
+- Browser download APIs
+- Modern CSS layout and viewport features
+
+## Current Class Support
+
+The current build uses one class:
+
+```text
+Class ID: 0
+Class name: object
+```
+
+The annotation data structure includes a `classId` field, but the current user interface does not provide a class-management interface.
+
+## Screenshots
+
+![TapBox](screenshots/tapbox.png)
 
 ## Contributing
 
-This is a small vanilla JavaScript project with no build step, so contributing is straightforward:
+TapBox is implemented as a single HTML file without a build system.
 
-1. **Fork** the repository.
-2. **Clone** your fork locally.
-3. **Modify** `index.html` directly.
-4. **Test** by opening `index.html` in a browser (ideally check both a desktop browser and an Android/mobile browser, since touch behavior is the app's core use case).
-5. **Open a pull request** describing what changed and why.
+To contribute:
 
-Please keep changes dependency-free where possible, in keeping with the project's single-file, no-build-system approach.
+1. Fork the repository.
+2. Clone your fork.
+3. Modify `index.html`.
+4. Test the changes locally.
+5. Test touch interaction when modifying annotation, crop, zoom, or gesture behavior.
+6. Open a pull request describing the changes.
 
-## Roadmap
+When modifying image-preparation functionality, make sure bounding boxes remain synchronized with the working image coordinate system.
 
-Realistic possible future improvements — nothing listed here is implemented yet:
+## License
 
-- [ ] Multiple classes (currently single-class only)
-- [ ] Additional export formats (e.g. COCO, Pascal VOC)
-- [ ] Dataset train/validation splitting on export
-- [ ] Optional local persistence (e.g. saving progress between sessions)
+[GPL](./LICENSE)
+
+## Disclaimer
+
+TapBox is an **image annotation and dataset-preparation utility**.
+
+It can be used to:
+
+- Import images
+- Create bounding boxes
+- Edit annotations
+- Prepare images
+- Validate annotations
+- Save project metadata
+- Export object-detection datasets
+
+TapBox does not itself train, evaluate, or execute an object-detection model.
+ sessions)
 - [ ] Box copy/duplicate between similar frames
 
 ## Credits / dependencies
